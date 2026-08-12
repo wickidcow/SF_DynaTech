@@ -1,0 +1,57 @@
+name: Publish DynaTech Legacy Release
+
+on:
+  workflow_run:
+    workflows: ["Build DynaTech Legacy"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  LEGACY_VERSION: "1.1.01"
+  LEGACY_ARTIFACT: "SF_DynaTech_1.1.01.jar"
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download current JAR
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.LEGACY_ARTIFACT }}
+          path: dist
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v${LEGACY_VERSION}"
+          JAR="dist/${LEGACY_ARTIFACT}"
+          test -s "$JAR"
+          sha256sum "$JAR"
+          cat > release-notes.md <<'EOF'
+          ## DynaTech Legacy
+
+          Current Slimefun Legacy compatibility release for Paper 26.2.
+
+          - Paper 26.2 / Java 25 build target.
+          - ItemBand scheduling/thread-safety repair.
+          - Optional InfinityExpansion2 compatibility retained.
+          - Current direct raw JAR: `SF_DynaTech_1.1.01.jar`.
+          - Built from the latest successful `main` workflow run.
+          EOF
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$JAR" --clobber
+            gh release edit "$TAG" --title "DynaTech Legacy v${LEGACY_VERSION}" --notes-file release-notes.md --latest
+          else
+            gh release create "$TAG" "$JAR" --target "${{ github.event.workflow_run.head_sha }}" --title "DynaTech Legacy v${LEGACY_VERSION}" --notes-file release-notes.md --latest
+          fi
