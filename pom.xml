@@ -18,6 +18,7 @@
         <paper.version>26.2.build.111-stable</paper.version>
         <slimefun.version>RC-37</slimefun.version>
         <bstats.version>3.2.1</bstats.version>
+        <dough.version>1.3.1-SNAPSHOT</dough.version>
     </properties>
 
     <repositories>
@@ -28,6 +29,10 @@
         <repository>
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
+        <repository>
+            <id>norain-snapshots</id>
+            <url>https://maven.norain.city/snapshots</url>
         </repository>
         <repository>
             <id>jitpack.io</id>
@@ -87,6 +92,10 @@
                             <shadedPattern>me.profelements.dynatech.shaded.extrautils</shadedPattern>
                         </relocation>
                         <relocation>
+                            <pattern>io.github.bakedlibs.dough</pattern>
+                            <shadedPattern>me.profelements.dynatech.shaded.dough</shadedPattern>
+                        </relocation>
+                        <relocation>
                             <pattern>io.papermc.lib</pattern>
                             <shadedPattern>me.profelements.dynatech.shaded.paperlib</shadedPattern>
                         </relocation>
@@ -133,6 +142,12 @@
                     <artifactId>spigot-api</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.baked-libs</groupId>
+            <artifactId>dough-api</artifactId>
+            <version>${dough.version}</version>
         </dependency>
 
         <dependency>
