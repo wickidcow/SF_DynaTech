@@ -351,7 +351,6 @@ public class DynaTechItemsSetup {
                 .setProcessingSpeed(1)
                 .register(plugin);
 
-        // Make Wireless Energy Bank and Wireless Energy more costly
         new WirelessEnergyBank(ItemGroups.MACHINES, 10240, Items.WIRELESS_ENERGY_BANK.stack(),
                 RecipeType.ENHANCED_CRAFTING_TABLE,
                 new ItemStack[] {
@@ -467,7 +466,8 @@ public class DynaTechItemsSetup {
         // START Mechanical Components
 
         // final Recipe woodMachineCoreRecipe = Recipes.WOOD_MACHINE_CORE;
-        new SlimefunItem(ItemGroups.EXPERIMENTAL, Items.WOOD_MACHINE_CORE.stack()).register(plugin);
+        new SlimefunItem(ItemGroups.EXPERIMENTAL, Items.WOOD_MACHINE_CORE.stack(), RecipeType.NULL,
+                new ItemStack[] {}).register(plugin);
         // new UnplaceableBlock(ItemGroups.EXPERIMENTAL,
         // Items.WOOD_MACHINE_CORE.stack()).register(plugin);
 
