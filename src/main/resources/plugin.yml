@@ -1,24 +1,10 @@
-## CHANGE this to the name of your plugin.
 name: DynaTech
-
-## CHANGE this to your username.
 author: ProfElements
-
-## CHANGE this to a meaninful but short description of your plugin.
-description: A slimefun addon that add random stuff I want
-
-## CHANGE this to the path of the class that extends JavaPlugin.
+contributors: [wickidcow]
+description: A Slimefun addon with machines, tools, fluids, utilities, and optional addon integrations.
 main: me.profelements.dynatech.DynaTech
-
-## You can change this to link to your website or repository. You can also remove this line if you want to.
-website: https://github.com/ProfElements/DynaTech
-
-## This is required and marks Slimefun as a plugin dependency.
+website: https://github.com/wickidcow/SF_DynaTech
 depend: [Slimefun]
-softdepend: [ExoticGarden, InfinityExpansion, Gastronomicon]
-
-## This value is automatically replaced by the version specified in your pom.xml file, do not change this.
+softdepend: [ExoticGarden, InfinityExpansion, InfinityExpansion2, Gastronomicon]
 version: ${project.version}
-
-## This is the minimum minecraft version required to run your plugin.
-api-version: 1.19
+api-version: '1.21'

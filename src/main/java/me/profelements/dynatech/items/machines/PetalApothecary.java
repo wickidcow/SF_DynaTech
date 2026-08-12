@@ -18,6 +18,7 @@ import io.github.thebusybiscuit.slimefun4.api.events.PlayerRightClickEvent;
 import io.github.thebusybiscuit.slimefun4.api.items.ItemGroup;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
+import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockUseHandler;
 import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
@@ -32,7 +33,10 @@ public class PetalApothecary extends SlimefunItem {
     protected static final HashMap<BlockPosition, List<ItemStack>> RECIPE_ITEMS = new HashMap<>();
 
     public PetalApothecary(ItemGroup itemGroup, SlimefunItemStack item) {
-        super(itemGroup, item);
+        // The historical two-argument SlimefunItem constructor represented an item with no
+        // guide crafting recipe. Slimefun Legacy intentionally removed that convenience
+        // constructor, so preserve the old behavior explicitly.
+        super(itemGroup, item, RecipeType.NULL, new ItemStack[0]);
 
         addItemHandler(onUse(), new BlockTicker() {
 

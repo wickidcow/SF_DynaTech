@@ -4,6 +4,7 @@ import io.github.bakedlibs.dough.updater.BlobBuildUpdater;
 import io.github.thebusybiscuit.slimefun4.api.MinecraftVersion;
 import io.github.thebusybiscuit.slimefun4.api.SlimefunAddon;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
+import me.profelements.dynatech.integrations.InfinityExpansion2Integration;
 import me.profelements.dynatech.items.backpacks.PicnicBasket;
 import me.profelements.dynatech.items.misc.DimensionalHomeDimension;
 import me.profelements.dynatech.items.tools.ElectricalStimulator;
@@ -23,7 +24,6 @@ import me.profelements.dynatech.registries.Recipes;
 import me.profelements.dynatech.registries.Registries;
 import me.profelements.dynatech.setup.DynaTechItemsSetup;
 import me.profelements.dynatech.tasks.ItemBandTask;
-import me.profelements.dynatech.utils.Liquid;
 import me.profelements.dynatech.utils.LiquidRegistry;
 import me.profelements.dynatech.utils.RecipeRegistry;
 
@@ -70,6 +70,8 @@ public class DynaTech extends JavaPlugin implements SlimefunAddon {
         DynaTechLiquids.registerLiquids(DynaTech.getLiquidRegistry());
 
         DynaTechItemsSetup.setup(this);
+        InfinityExpansion2Integration.register(this);
+
         new PicnicBasketListener(this, (PicnicBasket) Items.PICNIC_BASKET.stack().getItem());
         new ElectricalStimulatorListener(this, (ElectricalStimulator) Items.ELECTRICAL_STIMULATOR.stack().getItem());
         new InventoryFilterListener(this);
@@ -80,27 +82,28 @@ public class DynaTech extends JavaPlugin implements SlimefunAddon {
         try {
             Class.forName("io.github.schntgaispock.gastronomicon.api.items.FoodItemStack");
             new GastronomiconIntegrationListener(this);
-        } catch (ClassNotFoundException ex) {
-
+        } catch (ClassNotFoundException ignored) {
         }
 
         try {
             Class.forName("io.github.thebusybiscuit.exoticgarden.items.CustomFood");
             new ExoticGardenIntegrationListener(this);
-        } catch (ClassNotFoundException ex) {
+        } catch (ClassNotFoundException ignored) {
         }
 
-        // Tasks
-        getServer().getScheduler().runTaskTimerAsynchronously(DynaTech.getInstance(), new ItemBandTask(), 0L, 5 * 20L);
-        getServer().getScheduler().runTaskTimer(DynaTech.getInstance(), () -> this.tickInterval++, 0, TICK_TIME);
+        // ItemBandTask touches live Bukkit player inventories and item metadata, so it must stay
+        // on the server thread. The previous asynchronous schedule was unsafe on modern Paper.
+        getServer().getScheduler().runTaskTimer(this, new ItemBandTask(), 0L, 5 * 20L);
+        getServer().getScheduler().runTaskTimer(this, () -> this.tickInterval++, 0L, TICK_TIME);
 
         if (getConfig().getBoolean("options.auto-update", true) && getDescription().getVersion().startsWith("Main")) {
             new BlobBuildUpdater(this, getFile(), "DynaTech", "Main").start();
         }
 
         if (!Slimefun.getMinecraftVersion().isAtLeast(MinecraftVersion.MINECRAFT_1_19)) {
-            getLogger().warning("DynaTech only support 1.19+, disabling.");
+            getLogger().warning("DynaTech only supports Minecraft 1.19+, disabling.");
             getServer().getPluginManager().disablePlugin(this);
+            return;
         }
 
         setupRegistries();
@@ -114,19 +117,17 @@ public class DynaTech extends JavaPlugin implements SlimefunAddon {
         Registries.ITEM_GROUPS.freeze();
         Registries.RECIPE_TYPES.freeze();
         Registries.RECIPES.freeze();
-
     }
 
     @Override
     public void onDisable() {
         Bukkit.getScheduler().cancelTasks(this);
-
         setInstance(null);
     }
 
     @Override
     public String getBugTrackerURL() {
-        return "https://github.com/ProfElements/DynaTech/issues";
+        return "https://github.com/wickidcow/SF_DynaTech/issues";
     }
 
     @Nonnull
@@ -184,5 +185,4 @@ public class DynaTech extends JavaPlugin implements SlimefunAddon {
 
         return instance.getServer().getScheduler().runTask(getInstance(), runnable);
     }
-
 }
