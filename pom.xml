@@ -87,10 +87,6 @@
                             <shadedPattern>me.profelements.dynatech.shaded.extrautils</shadedPattern>
                         </relocation>
                         <relocation>
-                            <pattern>io.github.bakedlibs.dough</pattern>
-                            <shadedPattern>me.profelements.dynatech.shaded.dough</shadedPattern>
-                        </relocation>
-                        <relocation>
                             <pattern>io.papermc.lib</pattern>
                             <shadedPattern>me.profelements.dynatech.shaded.paperlib</shadedPattern>
                         </relocation>
@@ -183,12 +179,6 @@
             <groupId>com.github.Slimefun-Addon-Community</groupId>
             <artifactId>extrautils</artifactId>
             <version>73e76ac</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.baked-libs.dough</groupId>
-            <artifactId>dough-api</artifactId>
-            <version>f8ff251</version>
         </dependency>
     </dependencies>
 </project>
