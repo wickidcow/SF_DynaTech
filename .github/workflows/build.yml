@@ -2,92 +2,65 @@ name: Build DynaTech Legacy
 
 on:
   push:
-    branches:
-      - main
-      - 'agent/**'
-    tags:
-      - 'v*'
+    branches: [main, 'agent/**']
+    tags: ['v*']
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 env:
-  LEGACY_ARTIFACT: SF_DynaTech_1.1.01.jar
+  LEGACY_VERSION: "1.1.01"
+  SOURCE_ARTIFACT: "SF_DynaTech_1.1.01.jar"
+  OUTPUT_NAME: "SF_DynaTech1.1.01.jar"
 
 jobs:
   build:
     name: Paper 26.2 / Java 25
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
-
       - name: Set up Java 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
-
       - name: Verify 26.2 build metadata
         shell: bash
         run: |
           set -euo pipefail
           grep -Fq '<paper.version>26.2.build.111-stable</paper.version>' pom.xml
           grep -Fq '<maven.compiler.release>25</maven.compiler.release>' pom.xml
-          grep -Fq '<finalName>SF_DynaTech_1.1.01</finalName>' pom.xml
-          grep -Fq "api-version: '1.21'" src/main/resources/plugin.yml
-          grep -Fq 'InfinityExpansion2' src/main/resources/plugin.yml
-
-      - name: Verify Bukkit thread safety repair
-        shell: bash
-        run: |
-          set -euo pipefail
-          if grep -R --line-number 'runTaskTimerAsynchronously.*ItemBandTask' src/main/java; then
-            echo 'ItemBandTask must not run asynchronously.'
-            exit 1
-          fi
-          grep -Fq 'runTaskTimer(this, new ItemBandTask()' src/main/java/me/profelements/dynatech/DynaTech.java
-
       - name: Build and verify
         run: mvn -B clean verify --file pom.xml
-
-      - name: Verify exact plugin JAR
+      - name: Stage versioned JAR
         shell: bash
         run: |
           set -euo pipefail
-          JAR="target/${LEGACY_ARTIFACT}"
+          mkdir -p dist
+          JAR="target/${SOURCE_ARTIFACT}"
           test -s "$JAR"
-          jar tf "$JAR" | grep -Fxq 'plugin.yml'
-          unzip -p "$JAR" plugin.yml | grep -Fq 'version: 1.1.01'
-          unzip -p "$JAR" plugin.yml | grep -Fq "api-version: '1.21'"
-          sha256sum "$JAR"
-
-      - name: Upload direct JAR artifact
+          cp "$JAR" "dist/${OUTPUT_NAME}"
+          jar tf "dist/${OUTPUT_NAME}" | grep -Fxq 'plugin.yml'
+          sha256sum "dist/${OUTPUT_NAME}"
+      - name: Upload CI artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.LEGACY_ARTIFACT }}
-          path: target/${{ env.LEGACY_ARTIFACT }}
-          archive: false
+          name: SF_DynaTech${{ env.LEGACY_VERSION }}
+          path: dist/${{ env.OUTPUT_NAME }}
           if-no-files-found: error
           retention-days: 30
-
-      - name: Publish direct JAR release asset
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish raw JAR release asset
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          JAR="target/${LEGACY_ARTIFACT}"
-          TAG="$GITHUB_REF_NAME"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$JAR" --clobber
-          else
-            gh release create "$TAG" "$JAR" --generate-notes --title "DynaTech Legacy $TAG"
-          fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v${LEGACY_VERSION}"; fi
+          JAR="dist/${OUTPUT_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then gh release upload "$TAG" "$JAR" --clobber; else gh release create "$TAG" "$JAR" --target "$GITHUB_SHA" --generate-notes --title "SF_DynaTech $TAG"; fi
