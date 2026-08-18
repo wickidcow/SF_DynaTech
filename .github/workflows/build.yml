@@ -47,13 +47,6 @@ jobs:
           cp "$JAR" "dist/${OUTPUT_NAME}"
           jar tf "dist/${OUTPUT_NAME}" | grep -Fxq 'plugin.yml'
           sha256sum "dist/${OUTPUT_NAME}"
-      - name: Upload CI artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: SF_DynaTech${{ env.LEGACY_VERSION }}
-          path: dist/${{ env.OUTPUT_NAME }}
-          if-no-files-found: error
-          retention-days: 30
       - name: Publish raw JAR release asset
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
