@@ -2,7 +2,7 @@ package me.profelements.dynatech.listeners;
 
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.api.player.PlayerBackpack;
-import io.github.thebusybiscuit.slimefun4.api.player.PlayerProfile;
+import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.utils.SlimefunUtils;
 import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.events.PicnicBasketFeedPlayerEvent;
@@ -23,71 +23,70 @@ import javax.annotation.ParametersAreNonnullByDefault;
 
 public class PicnicBasketListener implements Listener {
 
-    private final DynaTech plugin;  
+    private final DynaTech plugin;
     private final PicnicBasket picnicBasket;
-    
+
     @ParametersAreNonnullByDefault
-    public PicnicBasketListener(DynaTech plugin,PicnicBasket picnicBasket) {
+    public PicnicBasketListener(DynaTech plugin, PicnicBasket picnicBasket) {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
 
         this.plugin = plugin;
         this.picnicBasket = picnicBasket;
     }
-    
-    @EventHandler 
+
+    @EventHandler
     public void onHungerLoss(FoodLevelChangeEvent e) {
         if (e.getEntity() instanceof Player player && e.getFoodLevel() < player.getFoodLevel()) {
             checkAndConsume(player);
         }
     }
 
-    @EventHandler 
+    @EventHandler
     public void onHungerDamage(EntityDamageEvent e) {
         if (e.getEntity() instanceof Player player && e.getCause() == DamageCause.STARVATION) {
             checkAndConsume(player);
         }
-    }       
+    }
 
     private void checkAndConsume(@Nonnull Player p) {
         if (picnicBasket == null || picnicBasket.isDisabled()) {
-            return; 
+            return;
         }
 
         for (ItemStack item : p.getInventory().getContents()) {
             if (picnicBasket.isItem(item) || SlimefunItem.getByItem(item) instanceof PicnicBasket) {
                 if (picnicBasket.canUse(p, true)) {
                     takeFoodFromPicnicBasket(p, item);
-                } else { 
-                    return; 
+                } else {
+                    return;
                 }
             }
         }
     }
 
     private void takeFoodFromPicnicBasket(@Nonnull Player p, @Nonnull ItemStack picnicBasket) {
-        PlayerProfile.getBackpack(picnicBasket, backpack -> {
+        PlayerBackpack.getAsync(picnicBasket, backpack -> {
             if (backpack != null) {
-                DynaTech.runSync(() -> consumeFood(p, picnicBasket, backpack));
+                consumeFood(p, picnicBasket, backpack);
             }
-        });
-
+        }, p);
     }
-    
+
     private boolean consumeFood(@Nonnull Player p, @Nonnull ItemStack picnicBasketItem, @Nonnull PlayerBackpack backpack) {
         Inventory inv = backpack.getInventory();
         int slot = -1;
 
         for (int i = 0; i < inv.getSize(); i++) {
             ItemStack item = inv.getItem(i);
-            
+
             if (item != null) {
-                    slot = i; 
+                slot = i;
             }
         }
 
         if (slot >= 0) {
-            ItemStack item = inv.getItem(slot); 
-            PicnicBasketFeedPlayerEvent event = new PicnicBasketFeedPlayerEvent(p, picnicBasket, picnicBasketItem, item); 
+            ItemStack item = inv.getItem(slot);
+            PicnicBasketFeedPlayerEvent event = new PicnicBasketFeedPlayerEvent(p, picnicBasket, picnicBasketItem, item);
             plugin.getServer().getPluginManager().callEvent(event);
 
             if (!event.isCancelled()) {
@@ -103,8 +102,8 @@ public class PicnicBasketListener implements Listener {
                             inv.setItem(slot, null);
                         }
 
-                        backpack.markDirty();
-                        return true; 
+                        Slimefun.getDatabaseManager().getProfileDataController().saveBackpackInventory(backpack);
+                        return true;
                     }
                 }
             }
