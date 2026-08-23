@@ -12,31 +12,53 @@ permissions:
   contents: write
 
 env:
-  LEGACY_VERSION: "1.1.01"
-  SOURCE_ARTIFACT: "SF_DynaTech_1.1.01.jar"
-  OUTPUT_NAME: "SF_DynaTech1.1.01.jar"
+  LEGACY_VERSION: "1.1.02"
+  SOURCE_ARTIFACT: "SF_DynaTech_1.1.02.jar"
+  OUTPUT_NAME: "SF_DynaTech1.1.02.jar"
 
 jobs:
   build:
-    name: Paper 26.2 / Java 25
+    name: Paper 26.2 / Java 25 / Slimefun Legacy
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
+      - name: Check out DynaTech
+        uses: actions/checkout@v6
+
+      - name: Check out Slimefun Legacy
+        uses: actions/checkout@v6
+        with:
+          repository: wickidcow/Slimefun-Legacy
+          ref: master
+          path: .deps/Slimefun-Legacy
+
       - name: Set up Java 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
+
+      - name: Publish Slimefun Legacy API locally
+        working-directory: .deps/Slimefun-Legacy
+        run: |
+          chmod +x gradlew
+          ./gradlew publishToMavenLocal -PprojectVersion=ALBION-SNAPSHOT --no-daemon
+
       - name: Verify 26.2 build metadata
         shell: bash
         run: |
           set -euo pipefail
           grep -Fq '<paper.version>26.2.build.111-stable</paper.version>' pom.xml
           grep -Fq '<maven.compiler.release>25</maven.compiler.release>' pom.xml
-      - name: Build and verify
-        run: mvn -B clean verify --file pom.xml
+          grep -Fq '<version>1.1.02</version>' pom.xml
+
+      - name: Build and verify against Slimefun Legacy
+        run: >-
+          mvn -B clean verify --file pom.xml
+          -Dslimefun.groupId=com.github.slimefun
+          -Dslimefun.artifactId=Slimefun
+          -Dslimefun.version=ALBION-SNAPSHOT
+
       - name: Stage versioned JAR
         shell: bash
         run: |
@@ -47,12 +69,14 @@ jobs:
           cp "$JAR" "dist/${OUTPUT_NAME}"
           jar tf "dist/${OUTPUT_NAME}" | grep -Fxq 'plugin.yml'
           sha256sum "dist/${OUTPUT_NAME}"
+
       - name: Upload raw JAR artifact
         uses: actions/upload-artifact@v7
         with:
           path: dist/${{ env.OUTPUT_NAME }}
           archive: false
           if-no-files-found: error
+
       - name: Publish raw JAR release asset
         if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || github.ref_name == github.event.repository.default_branch
         env:
@@ -62,4 +86,8 @@ jobs:
           set -euo pipefail
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v${LEGACY_VERSION}"; fi
           JAR="dist/${OUTPUT_NAME}"
-          if gh release view "$TAG" >/dev/null 2>&1; then gh release upload "$TAG" "$JAR" --clobber; else gh release create "$TAG" "$JAR" --target "$GITHUB_SHA" --generate-notes --title "SF_DynaTech $TAG"; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$JAR" --clobber
+          else
+            gh release create "$TAG" "$JAR" --target "$GITHUB_SHA" --title "SF_DynaTech $TAG" --notes "Legacy compatibility update: auto-output chest transfers are now atomic (deposit first, consume only what was accepted), preventing race duplication and full-chest item loss. Built for Paper 26.2 / Java 25 directly against Slimefun Legacy."
+          fi
