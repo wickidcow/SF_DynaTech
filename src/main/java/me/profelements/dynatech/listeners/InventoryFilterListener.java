@@ -11,7 +11,7 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
-import io.github.thebusybiscuit.slimefun4.api.player.PlayerProfile;
+import io.github.thebusybiscuit.slimefun4.api.player.PlayerBackpack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +36,7 @@ public class InventoryFilterListener implements Listener {
         List<ItemStack> regItems = new ArrayList<>();
         for (ItemStack stack : player.getInventory().getContents()) {
             if (SlimefunItem.getByItem(stack) instanceof InventoryFilter) {
-                PlayerProfile.getBackpack(stack, backpack -> {
+                PlayerBackpack.getAsync(stack, backpack -> {
                     for (ItemStack bpStack : backpack.getInventory().getContents()) {
                         SlimefunItem item = SlimefunItem.getByItem(bpStack);
                         if (item != null) {
@@ -45,7 +45,7 @@ public class InventoryFilterListener implements Listener {
                             regItems.add(bpStack);
                         }
                     }
-                });
+                }, player);
             }
         }
 
