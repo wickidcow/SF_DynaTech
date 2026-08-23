@@ -6,7 +6,7 @@
 
     <groupId>me.profelements</groupId>
     <artifactId>DynaTech</artifactId>
-    <version>1.1.01</version>
+    <version>1.1.02</version>
     <name>DynaTech</name>
     <description>Legacy-maintained DynaTech for modern Paper and Slimefun-compatible runtimes.</description>
     <url>https://github.com/wickidcow/SF_DynaTech</url>
@@ -16,6 +16,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.release>25</maven.compiler.release>
         <paper.version>26.2.build.111-stable</paper.version>
+        <slimefun.groupId>com.github.Slimefun</slimefun.groupId>
+        <slimefun.artifactId>Slimefun4</slimefun.artifactId>
         <slimefun.version>RC-37</slimefun.version>
         <bstats.version>3.2.1</bstats.version>
         <dough.version>1.3.1-SNAPSHOT</dough.version>
@@ -45,7 +47,7 @@
     </repositories>
 
     <build>
-        <finalName>SF_DynaTech_1.1.01</finalName>
+        <finalName>SF_DynaTech_1.1.02</finalName>
         <defaultGoal>clean package</defaultGoal>
         <sourceDirectory>${basedir}/src/main/java</sourceDirectory>
 
@@ -132,8 +134,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.Slimefun</groupId>
-            <artifactId>Slimefun4</artifactId>
+            <groupId>${slimefun.groupId}</groupId>
+            <artifactId>${slimefun.artifactId}</artifactId>
             <version>${slimefun.version}</version>
             <scope>provided</scope>
             <exclusions>
