@@ -27,11 +27,11 @@ public class GrowthChamber extends AbstractElectricMachine {
 
     private static final int[] INPUT_BORDER_SLOTS = new int[] { 9, 10, 11, 12, 18, 21, 27, 28, 29, 30 };
     private static final int[] OUTPUT_BORDER_SLOTS = new int[] {14, 15, 16, 17, 23, 26, 32, 33, 34, 35 };
-    private static final int[] BACKGROUND_SLOTS = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 31, 36, 37, 38, 39, 40, 41, 42, 43, 44 }; 
+    private static final int[] BACKGROUND_SLOTS = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 31, 36, 37, 38, 39, 40, 41, 42, 43, 44 };
 
     private static final ItemStack PROGRESS_ITEM = new ItemStack(Material.IRON_HOE);
 
-    private ItemSetting<Boolean> exoticGardenIntegration = new ItemSetting<>(this, "exotic-garden-integration", true);
+    private final ItemSetting<Boolean> exoticGardenIntegration = new ItemSetting<>(this, "exotic-garden-integration", true);
 
     public GrowthChamber(ItemGroup itemGroup, SlimefunItemStack item, RecipeType recipeType, ItemStack[] recipe) {
         super(itemGroup, item, recipeType, recipe);
@@ -42,27 +42,25 @@ public class GrowthChamber extends AbstractElectricMachine {
     @Override
     public void postRegister() {
         registerDefaultRecipes();
-    } 
-
+    }
 
     protected void registerDefaultRecipes() {
-
         registerRecipe(9, new ItemStack(Material.COCOA_BEANS), new ItemStack(Material.COCOA_BEANS, 3));
-        registerRecipe(15, new ItemStack[] {new ItemStack(Material.MELON_SEEDS)}, new ItemStack[] {new ItemStack(Material.MELON , 1), new ItemStack(Material.MELON_SEEDS, 1)});
-        registerRecipe(15, new ItemStack[] {new ItemStack(Material.PUMPKIN_SEEDS)}, new ItemStack[] {new ItemStack(Material.PUMPKIN , 1), new ItemStack(Material.PUMPKIN_SEEDS, 1)});
-        registerRecipe(15, new ItemStack[] {new ItemStack(Material.BEETROOT_SEEDS)}, new ItemStack[] {new ItemStack(Material.BEETROOT , 3), new ItemStack(Material.BEETROOT_SEEDS, 2)});
-        registerRecipe(12, new ItemStack[] {new ItemStack(Material.WHEAT_SEEDS)}, new ItemStack[] {new ItemStack(Material.WHEAT , 3), new ItemStack(Material.WHEAT_SEEDS, 2)});
+        registerRecipe(15, new ItemStack[] {new ItemStack(Material.MELON_SEEDS)}, new ItemStack[] {new ItemStack(Material.MELON, 1), new ItemStack(Material.MELON_SEEDS, 1)});
+        registerRecipe(15, new ItemStack[] {new ItemStack(Material.PUMPKIN_SEEDS)}, new ItemStack[] {new ItemStack(Material.PUMPKIN, 1), new ItemStack(Material.PUMPKIN_SEEDS, 1)});
+        registerRecipe(15, new ItemStack[] {new ItemStack(Material.BEETROOT_SEEDS)}, new ItemStack[] {new ItemStack(Material.BEETROOT, 3), new ItemStack(Material.BEETROOT_SEEDS, 2)});
+        registerRecipe(12, new ItemStack[] {new ItemStack(Material.WHEAT_SEEDS)}, new ItemStack[] {new ItemStack(Material.WHEAT, 3), new ItemStack(Material.WHEAT_SEEDS, 2)});
         registerRecipe(9, new ItemStack(Material.APPLE), new ItemStack(Material.APPLE, 3));
         registerRecipe(9, new ItemStack(Material.BROWN_MUSHROOM), new ItemStack(Material.BROWN_MUSHROOM, 3));
         registerRecipe(9, new ItemStack(Material.RED_MUSHROOM), new ItemStack(Material.RED_MUSHROOM, 3));
-        registerRecipe(9, new ItemStack[] {new ItemStack(Material.DEAD_BUSH)}, new ItemStack[] {new ItemStack(Material.DEAD_BUSH , 3), new ItemStack(Material.STICK, 2)});
+        registerRecipe(9, new ItemStack[] {new ItemStack(Material.DEAD_BUSH)}, new ItemStack[] {new ItemStack(Material.DEAD_BUSH, 3), new ItemStack(Material.STICK, 2)});
         registerRecipe(9, new ItemStack(Material.SHORT_GRASS), new ItemStack(Material.SHORT_GRASS, 3));
         registerRecipe(12, new ItemStack(Material.TALL_GRASS), new ItemStack(Material.TALL_GRASS, 3));
         registerRecipe(9, new ItemStack(Material.FERN), new ItemStack(Material.FERN, 3));
         registerRecipe(12, new ItemStack(Material.LARGE_FERN), new ItemStack(Material.LARGE_FERN, 3));
         registerRecipe(9, new ItemStack(Material.VINE), new ItemStack(Material.VINE, 3));
 
-    // Flowers
+        // Flowers
         registerRecipe(9, new ItemStack(Material.DANDELION), new ItemStack(Material.DANDELION, 3));
         registerRecipe(9, new ItemStack(Material.POPPY), new ItemStack(Material.POPPY, 3));
         registerRecipe(9, new ItemStack(Material.BLUE_ORCHID), new ItemStack(Material.BLUE_ORCHID, 3));
@@ -88,34 +86,104 @@ public class GrowthChamber extends AbstractElectricMachine {
         registerRecipe(12, new ItemStack(Material.BAMBOO), new ItemStack(Material.BAMBOO, 3));
         registerRecipe(12, new ItemStack(Material.CACTUS), new ItemStack(Material.CACTUS, 3));
 
-        registerRecipe(30, new ItemStack[] {new ItemStack(Material.OAK_SAPLING)}, new ItemStack[] {new ItemStack(Material.OAK_SAPLING , 3), new ItemStack(Material.OAK_LOG, 6)});
-        registerRecipe(30, new ItemStack[] {new ItemStack(Material.BIRCH_SAPLING)}, new ItemStack[] {new ItemStack(Material.BIRCH_SAPLING , 3), new ItemStack(Material.BIRCH_LOG, 6)});
-        registerRecipe(30, new ItemStack[] {new ItemStack(Material.SPRUCE_SAPLING)}, new ItemStack[] {new ItemStack(Material.SPRUCE_SAPLING , 3), new ItemStack(Material.SPRUCE_LOG, 6)});
-        registerRecipe(30, new ItemStack[] {new ItemStack(Material.DARK_OAK_SAPLING)}, new ItemStack[] {new ItemStack(Material.DARK_OAK_SAPLING , 3), new ItemStack(Material.DARK_OAK_LOG, 6)});
+        // Modern renewable vegetation. Unknown names are skipped on older server APIs.
+        registerOptionalSelfRecipe("GLOW_BERRIES", 12, 3);
+        registerOptionalSelfRecipe("MOSS_BLOCK", 12, 3);
+        registerOptionalSelfRecipe("MOSS_CARPET", 9, 3);
+        registerOptionalSelfRecipe("PALE_MOSS_BLOCK", 12, 3);
+        registerOptionalSelfRecipe("PALE_MOSS_CARPET", 9, 3);
+        registerOptionalSelfRecipe("PALE_HANGING_MOSS", 9, 3);
+        registerOptionalSelfRecipe("HANGING_ROOTS", 9, 3);
+        registerOptionalSelfRecipe("SMALL_DRIPLEAF", 12, 3);
+        registerOptionalSelfRecipe("BIG_DRIPLEAF", 12, 3);
+        registerOptionalSelfRecipe("SPORE_BLOSSOM", 12, 3);
+        registerOptionalSelfRecipe("PINK_PETALS", 9, 3);
+        registerOptionalSelfRecipe("OPEN_EYEBLOSSOM", 9, 3);
+        registerOptionalSelfRecipe("CLOSED_EYEBLOSSOM", 9, 3);
+        registerOptionalSelfRecipe("FIREFLY_BUSH", 9, 3);
+        registerOptionalSelfRecipe("BUSH", 9, 3);
+        registerOptionalSelfRecipe("WILDFLOWERS", 9, 3);
+        registerOptionalSelfRecipe("CACTUS_FLOWER", 12, 3);
+        registerOptionalSelfRecipe("LEAF_LITTER", 9, 3);
+        registerOptionalSelfRecipe("SHORT_DRY_GRASS", 9, 3);
+        registerOptionalSelfRecipe("TALL_DRY_GRASS", 12, 3);
+
+        registerOptionalSeedRecipe("TORCHFLOWER_SEEDS", "TORCHFLOWER", 15, 2, 1);
+        registerOptionalSeedRecipe("PITCHER_POD", "PITCHER_PLANT", 15, 2, 1);
+
+        registerRecipe(30, new ItemStack[] {new ItemStack(Material.OAK_SAPLING)}, new ItemStack[] {new ItemStack(Material.OAK_SAPLING, 3), new ItemStack(Material.OAK_LOG, 6)});
+        registerRecipe(30, new ItemStack[] {new ItemStack(Material.BIRCH_SAPLING)}, new ItemStack[] {new ItemStack(Material.BIRCH_SAPLING, 3), new ItemStack(Material.BIRCH_LOG, 6)});
+        registerRecipe(30, new ItemStack[] {new ItemStack(Material.SPRUCE_SAPLING)}, new ItemStack[] {new ItemStack(Material.SPRUCE_SAPLING, 3), new ItemStack(Material.SPRUCE_LOG, 6)});
+        registerRecipe(30, new ItemStack[] {new ItemStack(Material.DARK_OAK_SAPLING)}, new ItemStack[] {new ItemStack(Material.DARK_OAK_SAPLING, 3), new ItemStack(Material.DARK_OAK_LOG, 6)});
         registerRecipe(30, new ItemStack[] {new ItemStack(Material.JUNGLE_SAPLING)}, new ItemStack[] {new ItemStack(Material.JUNGLE_SAPLING, 3), new ItemStack(Material.JUNGLE_LOG, 6)});
         registerRecipe(30, new ItemStack[] {new ItemStack(Material.ACACIA_SAPLING)}, new ItemStack[] {new ItemStack(Material.ACACIA_SAPLING, 3), new ItemStack(Material.ACACIA_LOG, 6)});
         registerRecipe(30, new ItemStack[] {new ItemStack(Material.MANGROVE_PROPAGULE)}, new ItemStack[] {new ItemStack(Material.MANGROVE_PROPAGULE, 3), new ItemStack(Material.MANGROVE_LOG, 6)});
         registerRecipe(30, new ItemStack[] {new ItemStack(Material.CHERRY_SAPLING)}, new ItemStack[] {new ItemStack(Material.CHERRY_SAPLING, 3), new ItemStack(Material.CHERRY_LOG, 6)});
+
+        registerOptionalTreeRecipe("PALE_OAK_SAPLING", "PALE_OAK_LOG");
+        registerOptionalAzaleaRecipe("AZALEA", "AZALEA_LEAVES");
+        registerOptionalAzaleaRecipe("FLOWERING_AZALEA", "FLOWERING_AZALEA_LEAVES");
+
+        // Minecraft 26.3 forward compatibility. Activates automatically when Poplar materials exist.
+        registerOptionalTreeRecipe("POPLAR_SAPLING", "POPLAR_LOG");
+        registerOptionalSelfRecipe("SHELF_MUSHROOM", 9, 3);
+        registerOptionalSelfRecipe("RED_SHRUB", 9, 3);
     }
-    
+
+    private void registerOptionalSelfRecipe(String materialName, int ticks, int amount) {
+        Material material = Material.matchMaterial(materialName);
+        if (material != null) {
+            registerRecipe(ticks, new ItemStack(material), new ItemStack(material, amount));
+        }
+    }
+
+    private void registerOptionalSeedRecipe(String inputName, String outputName, int ticks, int outputAmount, int returnedSeedAmount) {
+        Material input = Material.matchMaterial(inputName);
+        Material output = Material.matchMaterial(outputName);
+        if (input != null && output != null) {
+            registerRecipe(ticks,
+                    new ItemStack[] {new ItemStack(input)},
+                    new ItemStack[] {new ItemStack(output, outputAmount), new ItemStack(input, returnedSeedAmount)});
+        }
+    }
+
+    private void registerOptionalTreeRecipe(String saplingName, String logName) {
+        Material sapling = Material.matchMaterial(saplingName);
+        Material log = Material.matchMaterial(logName);
+        if (sapling != null && log != null) {
+            registerRecipe(30,
+                    new ItemStack[] {new ItemStack(sapling)},
+                    new ItemStack[] {new ItemStack(sapling, 3), new ItemStack(log, 6)});
+        }
+    }
+
+    private void registerOptionalAzaleaRecipe(String inputName, String leavesName) {
+        Material input = Material.matchMaterial(inputName);
+        Material leaves = Material.matchMaterial(leavesName);
+        if (input != null && leaves != null) {
+            registerRecipe(30,
+                    new ItemStack[] {new ItemStack(input)},
+                    new ItemStack[] {new ItemStack(input, 3), new ItemStack(Material.OAK_LOG, 6), new ItemStack(leaves, 3)});
+        }
+    }
 
     @Override
-	public List<ItemStack> getDisplayRecipes() {
-		List<ItemStack> display = new ArrayList<>(); 
+    public List<ItemStack> getDisplayRecipes() {
+        List<ItemStack> display = new ArrayList<>();
         for (MachineRecipe recipe : recipes) {
-           display.add(recipe.getInput()[0]);
-           if (recipe.getOutput().length > 1) {
-            display.add(recipe.getOutput()[1]);
-           } else {
-            display.add(recipe.getOutput()[0]);
-           }
+            display.add(recipe.getInput()[0]);
+            if (recipe.getOutput().length > 1) {
+                display.add(recipe.getOutput()[1]);
+            } else {
+                display.add(recipe.getOutput()[0]);
+            }
         }
         return display;
-	}
+    }
 
-	@Override
-	protected void setupMenu(BlockMenuPreset preset) {
-		for (int slot : BACKGROUND_SLOTS) {
+    @Override
+    protected void setupMenu(BlockMenuPreset preset) {
+        for (int slot : BACKGROUND_SLOTS) {
             preset.addItem(slot, ChestMenuUtils.getBackground(), ChestMenuUtils.getEmptyClickHandler());
         }
 
@@ -128,9 +196,9 @@ public class GrowthChamber extends AbstractElectricMachine {
         }
 
         preset.addItem(getProgressSlot(), new CustomItemStack(Material.BLACK_STAINED_GLASS_PANE, " "), ChestMenuUtils.getEmptyClickHandler());
-        
+
         for (int slot : getOutputSlots()) {
-            preset.addMenuClickHandler(slot,new ChestMenu.AdvancedMenuClickHandler() {
+            preset.addMenuClickHandler(slot, new ChestMenu.AdvancedMenuClickHandler() {
                 @Override
                 public boolean onClick(InventoryClickEvent e, Player p, int slot, ItemStack cursor, ClickAction action) {
                     return cursor.getType().isAir();
@@ -142,21 +210,20 @@ public class GrowthChamber extends AbstractElectricMachine {
                 }
             });
         }
-	}
+    }
 
-	@Override
-	protected int[] getInputSlots() {
-		return INPUT_SLOTS;
-	}
+    @Override
+    protected int[] getInputSlots() {
+        return INPUT_SLOTS;
+    }
 
-	@Override
-	protected int[] getOutputSlots() {
-		return OUTPUT_SLOTS;
-	}
+    @Override
+    protected int[] getOutputSlots() {
+        return OUTPUT_SLOTS;
+    }
 
-	@Override
-	protected ItemStack getProgressBar() {
-		return PROGRESS_ITEM;
-	}
-
+    @Override
+    protected ItemStack getProgressBar() {
+        return PROGRESS_ITEM;
+    }
 }
