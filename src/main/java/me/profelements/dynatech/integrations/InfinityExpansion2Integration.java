@@ -20,14 +20,15 @@ import java.util.logging.Level;
  *
  * <p>DynaTech historically compiled directly against InfinityExpansion 1's mob-data classes.
  * IE2 has a different Kotlin API. Keeping this bridge reflective prevents an optional addon from
- * becoming a hard class-loader dependency while still preserving DynaTech's Vex and Phantom cards
- * when IE2 is installed.</p>
+ * becoming a hard class-loader dependency while still preserving DynaTech's Vex card and a
+ * fallback Phantom card when IE2 does not already provide one.</p>
  */
 public final class InfinityExpansion2Integration {
 
     private static final String PLUGIN_NAME = "InfinityExpansion2";
     private static final String API_CLASS = "net.guizhanss.infinityexpansion2.api.InfinityExpansion2API";
     private static final String PROPS_CLASS = "net.guizhanss.infinityexpansion2.api.mobsim.MobDataCardProps";
+    private static final String MOB_DATA_CARD_CLASS = "net.guizhanss.infinityexpansion2.implementation.items.mobsim.MobDataCard";
     private static final String ITEMS_CLASS = "net.guizhanss.infinityexpansion2.implementation.IEItems";
 
     private InfinityExpansion2Integration() {
@@ -56,8 +57,13 @@ public final class InfinityExpansion2Integration {
             }
 
             registerVex(addon, pairConstructor, propsConstructor, registerMethod, emptyCard);
-            registerPhantom(addon, pairConstructor, propsConstructor, registerMethod, emptyCard);
-            addon.getLogger().info("InfinityExpansion2 bridge enabled: registered DynaTech Vex and Phantom mob simulation cards.");
+
+            if (hasIe2MobDataCard(loader, "phantom")) {
+                addon.getLogger().info("InfinityExpansion2 bridge enabled: registered DynaTech Vex card; using IE2's native Phantom card.");
+            } else {
+                registerPhantom(addon, pairConstructor, propsConstructor, registerMethod, emptyCard);
+                addon.getLogger().info("InfinityExpansion2 bridge enabled: registered DynaTech Vex and fallback Phantom mob simulation cards.");
+            }
         } catch (ReflectiveOperationException | LinkageError ex) {
             addon.getLogger().log(Level.WARNING,
                     "InfinityExpansion2 was detected, but the optional DynaTech integration could not be initialized. DynaTech will continue without IE2 mob cards.", ex);
@@ -95,6 +101,13 @@ public final class InfinityExpansion2Integration {
         return null;
     }
 
+    private static boolean hasIe2MobDataCard(ClassLoader loader, String id) throws ReflectiveOperationException {
+        Class<?> cardClass = Class.forName(MOB_DATA_CARD_CLASS, true, loader);
+        Object companion = cardClass.getField("Companion").get(null);
+        Method getMobDataCard = companion.getClass().getMethod("getMobDataCard", String.class);
+        return getMobDataCard.invoke(companion, id) != null;
+    }
+
     private static void registerVex(DynaTech addon, Constructor<?> pairConstructor, Constructor<?> propsConstructor,
                                     Method registerMethod, ItemStack emptyCard) throws ReflectiveOperationException {
         ItemStack[] recipe = new ItemStack[] {
@@ -108,7 +121,7 @@ public final class InfinityExpansion2Integration {
         drops.add(pairConstructor.newInstance(Items.GHOSTLY_ESSENCE.stack().clone(), 0.90D));
 
         Object props = propsConstructor.newInstance(
-                "dynatech_vex", "Vex", Items.VEX_GEM.stack().clone(), 600, 4, drops, recipe);
+                "dynatech_vex", "Vex", new ItemStack(Material.DIAMOND_CHESTPLATE), 600, 4, drops, recipe);
         registerMethod.invoke(null, props, addon);
     }
 
@@ -125,7 +138,7 @@ public final class InfinityExpansion2Integration {
         drops.add(pairConstructor.newInstance(new ItemStack(Material.PHANTOM_MEMBRANE), 0.25D));
 
         Object props = propsConstructor.newInstance(
-                "dynatech_phantom", "Phantom", new ItemStack(Material.PHANTOM_MEMBRANE), 300, 2, drops, recipe);
+                "dynatech_phantom", "Phantom", new ItemStack(Material.DIAMOND_CHESTPLATE), 300, 2, drops, recipe);
         registerMethod.invoke(null, props, addon);
     }
 
