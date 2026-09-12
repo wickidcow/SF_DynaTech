@@ -5,6 +5,7 @@ import io.github.thebusybiscuit.slimefun4.api.MinecraftVersion;
 import io.github.thebusybiscuit.slimefun4.api.SlimefunAddon;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import me.profelements.dynatech.integrations.InfinityExpansion2Integration;
+import me.profelements.dynatech.integrations.SlimefunLegacyIdMappings;
 import me.profelements.dynatech.items.backpacks.PicnicBasket;
 import me.profelements.dynatech.items.misc.DimensionalHomeDimension;
 import me.profelements.dynatech.items.tools.ElectricalStimulator;
@@ -70,6 +71,7 @@ public class DynaTech extends JavaPlugin implements SlimefunAddon {
         DynaTechLiquids.registerLiquids(DynaTech.getLiquidRegistry());
 
         DynaTechItemsSetup.setup(this);
+        SlimefunLegacyIdMappings.publish(this);
         InfinityExpansion2Integration.register(this);
 
         new PicnicBasketListener(this, (PicnicBasket) Items.PICNIC_BASKET.stack().getItem());
