@@ -95,6 +95,11 @@ public final class DynaTechLegacyMigrationProviderBridge {
         details.add("Loaded inventories scanned: " + stats.inventoriesScanned + '.');
         details.add("Schema-deferred entries: " + stats.deferredEntries
                 + " (reported but intentionally not rewritten).");
+        details.add("AUTO_KITCHEN remains deferred even when its old menu is empty: the legacy smoker used an internal "
+                + "3x3 ingredient grid and two output slots, while KITCHEN_AUTO_CRAFTER is a skull-based Slimefun "
+                + "Auto Crafter that requires external storage below and an explicitly selected recipe.");
+        details.add("Converting AUTO_KITCHEN therefore requires a dedicated physical-block, inventory and recipe-state "
+                + "migration; an ID-only rewrite is never considered lossless.");
         details.add("Scope is loaded-only: loaded Slimefun data, loaded chunks/entities/containers and online players.");
         details.add("No chunks were force-loaded and no unmapped DynaTech IDs were rewritten.");
         if (!repair) {
