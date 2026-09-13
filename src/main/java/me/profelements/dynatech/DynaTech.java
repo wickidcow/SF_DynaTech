@@ -4,6 +4,7 @@ import io.github.bakedlibs.dough.updater.BlobBuildUpdater;
 import io.github.thebusybiscuit.slimefun4.api.MinecraftVersion;
 import io.github.thebusybiscuit.slimefun4.api.SlimefunAddon;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
+import me.profelements.dynatech.integrations.DynaTechLegacyMigrationProviderBridge;
 import me.profelements.dynatech.integrations.InfinityExpansion2Integration;
 import me.profelements.dynatech.integrations.SlimefunLegacyIdMappings;
 import me.profelements.dynatech.items.backpacks.PicnicBasket;
@@ -72,6 +73,7 @@ public class DynaTech extends JavaPlugin implements SlimefunAddon {
 
         DynaTechItemsSetup.setup(this);
         SlimefunLegacyIdMappings.publish(this);
+        DynaTechLegacyMigrationProviderBridge.register(this);
         InfinityExpansion2Integration.register(this);
 
         new PicnicBasketListener(this, (PicnicBasket) Items.PICNIC_BASKET.stack().getItem());

@@ -103,7 +103,9 @@ public final class SlimefunLegacyIdMappings {
         map(mappings, "WITHER_GOLEM", Items.Keys.WITHER_SKELETON_GOLEM.asSlimefunId());
 
         // Historical machines and transfer blocks.
-        map(mappings, "AUTO_KITCHEN", Items.Keys.AUTO_KITCHEN.asSlimefunId());
+        // The old AutoKitchen implementation was replaced by KitchenAutoCrafter; AUTO_KITCHEN remains
+        // as an unregistered display definition, so migration must target the registered successor.
+        map(mappings, "AUTO_KITCHEN", Items.Keys.KITCHEN_AUTO_CRAFTER.asSlimefunId());
         map(mappings, "GROWTH_CHAMBER", Items.Keys.GROWTH_CHAMBER.asSlimefunId());
         map(mappings, "GROWTH_CHAMBER_MK2", Items.Keys.GROWTH_CHAMBER_MK2.asSlimefunId());
         map(mappings, "GROWTH_CHAMBER_END", Items.Keys.GROWTH_CHAMBER_END.asSlimefunId());
