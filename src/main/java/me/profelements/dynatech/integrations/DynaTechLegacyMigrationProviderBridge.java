@@ -8,7 +8,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 
 /** Optional reflective bridge into Slimefun Legacy's migration-provider API. */
@@ -94,12 +93,15 @@ public final class DynaTechLegacyMigrationProviderBridge {
                 + "; legacy: " + stats.legacyItemsFound + "; migrated: " + stats.itemsMigrated
                 + "; failures: " + stats.itemFailures);
         details.add("Loaded inventories scanned: " + stats.inventoriesScanned + '.');
+        details.add("Schema-deferred entries: " + stats.deferredEntries
+                + " (reported but intentionally not rewritten).");
         details.add("Scope is loaded-only: loaded Slimefun data, loaded chunks/entities/containers and online players.");
         details.add("No chunks were force-loaded and no unmapped DynaTech IDs were rewritten.");
         if (!repair) {
             details.add("Read-only scan complete. Slimefun Doctor must approve a fingerprinted execution plan before repair.");
         } else {
-            details.add("Migration preserved existing item metadata/PDC and placed-block key/value/menu state.");
+            details.add("Safe migrations preserved existing item metadata/PDC and placed-block key/value/menu state.");
+            details.add("Schema-deferred entries remain untouched until a dedicated migration is available.");
             details.add("Run the DynaTech provider scan again after normal exploration to catch legacy content in newly loaded chunks.");
         }
         details.addAll(stats.details);
