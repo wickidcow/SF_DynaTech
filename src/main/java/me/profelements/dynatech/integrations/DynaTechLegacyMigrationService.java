@@ -2,8 +2,8 @@ package me.profelements.dynatech.integrations;
 
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
-import me.profelements.dynatech.DynaTech;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
+import me.profelements.dynatech.DynaTech;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -22,6 +22,7 @@ import org.bukkit.inventory.meta.BundleMeta;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -38,17 +39,28 @@ import java.util.logging.Level;
 /**
  * Manual, loaded-scope migration for verified pre-namespaced DynaTech IDs.
  *
- * <p>This service deliberately does not register listeners or force-load chunks. Slimefun Legacy's
- * migration-provider workflow owns authorization; DynaTech owns the actual persistence rewrite.</p>
+ * <p>This service never registers background migration listeners and never force-loads chunks.
+ * Slimefun Legacy's fingerprinted Doctor workflow owns authorization; DynaTech owns the actual
+ * addon-specific persistence rewrite.</p>
  */
 final class DynaTechLegacyMigrationService {
 
     private static final int MAX_NESTED_DEPTH = 4;
+    private static final int MAX_DETAIL_SAMPLES = 12;
     private static final String MIGRATION_KEY = "dynatech_legacy_migrated";
+
+    /**
+     * The old Auto Kitchen is not a simple rename. It was a self-contained inventory machine,
+     * while the modern Kitchen Auto Crafter is Slimefun's skull-based Auto Crafter and consumes
+     * from an inventory below it. Keep the mapping visible to Doctor, but do not rewrite it until
+     * a dedicated slot/physical-block migration is defined.
+     */
+    private static final Set<String> DEFERRED_SCHEMA_IDS = Set.of("AUTO_KITCHEN");
 
     private final DynaTech plugin;
     private final Map<String, String> mappings = SlimefunLegacyIdMappings.mappings();
     private final Set<Inventory> seenInventories = Collections.newSetFromMap(new IdentityHashMap<>());
+
     private Object itemDataService;
     private Method getItemData;
     private Method setItemData;
@@ -61,7 +73,6 @@ final class DynaTechLegacyMigrationService {
     MigrationStats scanLoaded(boolean repair) {
         MigrationStats stats = new MigrationStats();
         resolveItemDataService(stats);
-
         scanLoadedSlimefunData(repair, stats);
 
         for (World world : plugin.getServer().getWorlds()) {
@@ -82,7 +93,7 @@ final class DynaTechLegacyMigrationService {
         Object controller = blockDataController();
         if (controller == null) {
             stats.failures++;
-            stats.details.add("Slimefun block-data controller was unavailable; placed DynaTech blocks were not scanned.");
+            addDetail(stats, "Slimefun block-data controller was unavailable; placed DynaTech blocks were not scanned.");
             return;
         }
 
@@ -104,6 +115,13 @@ final class DynaTechLegacyMigrationService {
             }
 
             stats.legacyBlocksFound++;
+            if (DEFERRED_SCHEMA_IDS.contains(sourceId)) {
+                stats.deferredEntries++;
+                addDetail(stats, "Deferred " + sourceId + " -> " + targetId
+                        + ": old Auto Kitchen storage/layout is not compatible with the modern Auto Crafter schema.");
+                continue;
+            }
+
             if (!repair) {
                 continue;
             }
@@ -112,7 +130,7 @@ final class DynaTechLegacyMigrationService {
             if (location == null || !isTargetRegistered(targetId)) {
                 stats.blockFailures++;
                 stats.failures++;
-                stats.details.add("Skipped block " + sourceId + " -> " + targetId
+                addDetail(stats, "Skipped block " + sourceId + " -> " + targetId
                         + ": location or registered target was unavailable.");
                 continue;
             }
@@ -169,8 +187,8 @@ final class DynaTechLegacyMigrationService {
                 }
                 ItemStack[] armor = equipment.getArmorContents();
                 boolean changed = false;
-                for (int i = 0; i < armor.length; i++) {
-                    changed |= inspectItem(armor[i], repair, stats, 0);
+                for (ItemStack stack : armor) {
+                    changed |= inspectItem(stack, repair, stats, 0);
                 }
                 if (changed) {
                     equipment.setArmorContents(armor);
@@ -208,8 +226,12 @@ final class DynaTechLegacyMigrationService {
         String targetId = sourceId == null ? null : mappings.get(sourceId);
         if (targetId != null) {
             stats.legacyItemsFound++;
-            if (repair) {
-                if (!isTargetRegistered(targetId) || setItemId(stack, targetId) == false) {
+            if (DEFERRED_SCHEMA_IDS.contains(sourceId)) {
+                stats.deferredEntries++;
+                addDetail(stats, "Deferred ItemStack " + sourceId + " -> " + targetId
+                        + ": modern Auto Crafter uses a different physical/item schema.");
+            } else if (repair) {
+                if (!isTargetRegistered(targetId) || !setItemId(stack, targetId)) {
                     stats.itemFailures++;
                     stats.failures++;
                 } else {
@@ -247,7 +269,7 @@ final class DynaTechLegacyMigrationService {
                 }
             }
             if (nestedChanged) {
-                blockStateMeta.setBlockState(holder instanceof BlockState state ? state : blockStateMeta.getBlockState());
+                blockStateMeta.setBlockState(blockStateMeta.getBlockState());
                 stack.setItemMeta(blockStateMeta);
                 changed = true;
             }
@@ -267,7 +289,7 @@ final class DynaTechLegacyMigrationService {
             setItemData = itemDataService.getClass().getMethod("setItemData", ItemStack.class, String.class);
         } catch (ReflectiveOperationException | RuntimeException ex) {
             stats.failures++;
-            stats.details.add("Slimefun item-data service was unavailable; legacy DynaTech ItemStacks cannot be rewritten.");
+            addDetail(stats, "Slimefun item-data service was unavailable; legacy DynaTech ItemStacks cannot be rewritten.");
             plugin.getLogger().log(Level.WARNING, "DynaTech Doctor could not resolve Slimefun item-data service", ex);
         }
     }
@@ -307,20 +329,8 @@ final class DynaTechLegacyMigrationService {
 
     private void migrateBlock(Object controller, Object oldData, String sourceId, String targetId, Location location)
             throws ReflectiveOperationException {
-        @SuppressWarnings("unchecked")
-        Map<String, String> oldValues = new LinkedHashMap<>((Map<String, String>) call(oldData, "getAllData"));
+        Map<String, String> oldValues = snapshotData(oldData);
         ItemStack[] menuContents = snapshotMenu(oldData);
-
-        Method directSetter = findMethod(oldData.getClass(), "setSfId", String.class);
-        if (directSetter != null) {
-            directSetter.invoke(oldData, targetId);
-            Method setData = findMethod(oldData.getClass(), "setData", String.class, String.class);
-            if (setData != null) {
-                setData.invoke(oldData, MIGRATION_KEY, "legacy:" + sourceId);
-            }
-            saveBlockInventory(controller, oldData);
-            return;
-        }
 
         Method remove = findOneArgMethod(controller.getClass(), "removeBlock", Location.class);
         Method create = findCreateBlock(controller.getClass());
@@ -329,23 +339,21 @@ final class DynaTechLegacyMigrationService {
         }
 
         remove.invoke(controller, location);
-        Object newData = null;
         try {
-            newData = create.invoke(controller, location, targetId);
+            Object newData = create.invoke(controller, location, targetId);
             if (newData == null) {
                 throw new IllegalStateException("Slimefun block controller returned null while creating " + targetId);
             }
             restoreBlockData(newData, oldValues, sourceId);
-            restoreMenu(newData, menuContents);
+            restoreMenuLosslessly(newData, menuContents);
             saveBlockInventory(controller, newData);
         } catch (ReflectiveOperationException | RuntimeException migrationFailure) {
-            // Best-effort rollback to the exact stored legacy identity/state. Never change the Bukkit block itself.
             try {
                 remove.invoke(controller, location);
                 Object restored = create.invoke(controller, location, sourceId);
                 if (restored != null) {
                     restoreBlockData(restored, oldValues, null);
-                    restoreMenu(restored, menuContents);
+                    restoreMenuLosslessly(restored, menuContents);
                     saveBlockInventory(controller, restored);
                 }
             } catch (ReflectiveOperationException | RuntimeException rollbackFailure) {
@@ -353,6 +361,20 @@ final class DynaTechLegacyMigrationService {
             }
             throw migrationFailure;
         }
+    }
+
+    @Nonnull
+    private Map<String, String> snapshotData(Object data) {
+        Object raw = call(data, "getAllData");
+        Map<String, String> copy = new LinkedHashMap<>();
+        if (raw instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() instanceof String key && entry.getValue() instanceof String value) {
+                    copy.put(key, value);
+                }
+            }
+        }
+        return copy;
     }
 
     private void restoreBlockData(Object data, Map<String, String> values, @Nullable String migratedFrom)
@@ -372,23 +394,27 @@ final class DynaTechLegacyMigrationService {
         }
     }
 
-    private void restoreMenu(Object data, @Nullable ItemStack[] contents) {
-        if (contents == null) {
-            return;
-        }
-        Object menuObject = call(data, "getBlockMenu");
-        if (!(menuObject instanceof BlockMenu menu)) {
-            return;
-        }
-        Inventory inventory = menu.toInventory();
-        int length = Math.min(contents.length, inventory.getSize());
-        for (int i = 0; i < length; i++) {
-            inventory.setItem(i, contents[i] == null ? null : contents[i].clone());
-        }
-    }
-
     @Nullable
     private ItemStack[] snapshotMenu(Object data) {
+        Object raw = call(data, "getMenuContents");
+        if (raw != null && raw.getClass().isArray()) {
+            int length = Array.getLength(raw);
+            ItemStack[] copy = new ItemStack[length];
+            for (int i = 0; i < length; i++) {
+                Object value = Array.get(raw, i);
+                copy[i] = value instanceof ItemStack stack ? stack.clone() : null;
+            }
+            return copy;
+        }
+        if (raw instanceof Collection<?> collection) {
+            ItemStack[] copy = new ItemStack[collection.size()];
+            int i = 0;
+            for (Object value : collection) {
+                copy[i++] = value instanceof ItemStack stack ? stack.clone() : null;
+            }
+            return copy;
+        }
+
         Object menuObject = call(data, "getBlockMenu");
         if (!(menuObject instanceof BlockMenu menu)) {
             return null;
@@ -401,22 +427,50 @@ final class DynaTechLegacyMigrationService {
         return copy;
     }
 
-    private void saveBlockInventory(Object controller, Object data) {
-        Method save = findOneArgMethod(controller.getClass(), "saveBlockInventory", data.getClass());
-        if (save == null) {
-            for (Method method : controller.getClass().getMethods()) {
-                if (method.getName().equals("saveBlockInventory") && method.getParameterCount() == 1
-                        && method.getParameterTypes()[0].isAssignableFrom(data.getClass())) {
-                    save = method;
-                    break;
-                }
+    private void restoreMenuLosslessly(Object data, @Nullable ItemStack[] contents) {
+        if (contents == null) {
+            return;
+        }
+        Object menuObject = call(data, "getBlockMenu");
+        if (!(menuObject instanceof BlockMenu menu)) {
+            if (containsAnyItem(contents)) {
+                throw new IllegalStateException("Target block did not hydrate a menu required to preserve legacy contents");
+            }
+            return;
+        }
+
+        Inventory inventory = menu.toInventory();
+        for (int i = inventory.getSize(); i < contents.length; i++) {
+            if (contents[i] != null && !contents[i].getType().isAir()) {
+                throw new IllegalStateException("Target menu is too small to preserve legacy slot " + i);
             }
         }
-        if (save != null) {
-            try {
-                save.invoke(controller, data);
-            } catch (ReflectiveOperationException | RuntimeException ex) {
-                plugin.getLogger().log(Level.FINE, "DynaTech Doctor could not explicitly flush a migrated block menu", ex);
+
+        int length = Math.min(contents.length, inventory.getSize());
+        for (int i = 0; i < length; i++) {
+            inventory.setItem(i, contents[i] == null ? null : contents[i].clone());
+        }
+    }
+
+    private static boolean containsAnyItem(ItemStack[] contents) {
+        for (ItemStack stack : contents) {
+            if (stack != null && !stack.getType().isAir()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void saveBlockInventory(Object controller, Object data) {
+        for (Method method : controller.getClass().getMethods()) {
+            if (method.getName().equals("saveBlockInventory") && method.getParameterCount() == 1
+                    && method.getParameterTypes()[0].isAssignableFrom(data.getClass())) {
+                try {
+                    method.invoke(controller, data);
+                } catch (ReflectiveOperationException | RuntimeException ex) {
+                    plugin.getLogger().log(Level.FINE, "DynaTech Doctor could not explicitly flush a migrated block menu", ex);
+                }
+                return;
             }
         }
     }
@@ -439,16 +493,10 @@ final class DynaTechLegacyMigrationService {
         List<Object> result = new ArrayList<>();
         Object chunks = call(controller, "getAllLoadedChunkData");
         if (chunks instanceof Collection<?> collection) {
-            for (Object chunkData : collection) {
-                Object blocks = call(chunkData, "getAllBlockData");
-                if (blocks instanceof Collection<?> blockCollection) {
-                    result.addAll(blockCollection);
-                }
-            }
+            appendBlockData(result, collection);
             return result;
         }
 
-        // Compatibility fallback for older/forked storage controllers.
         for (Field field : allFields(controller.getClass())) {
             try {
                 field.setAccessible(true);
@@ -460,20 +508,34 @@ final class DynaTechLegacyMigrationService {
                 if (sample == null || findMethod(sample.getClass(), "getAllBlockData") == null) {
                     continue;
                 }
-                for (Object chunkData : map.values()) {
-                    if (chunkData == null) {
-                        continue;
-                    }
-                    Object blocks = call(chunkData, "getAllBlockData");
-                    if (blocks instanceof Collection<?> blockCollection) {
-                        result.addAll(blockCollection);
-                    }
-                }
+                appendBlockData(result, map.values());
                 break;
             } catch (IllegalAccessException ignored) {
             }
         }
         return result;
+    }
+
+    private static void appendBlockData(List<Object> result, Collection<?> chunkDataCollection) {
+        for (Object chunkData : chunkDataCollection) {
+            if (chunkData == null) {
+                continue;
+            }
+            Object blocks = call(chunkData, "getAllBlockData");
+            if (blocks instanceof Collection<?> blockCollection) {
+                for (Object block : blockCollection) {
+                    if (block != null) {
+                        result.add(block);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void addDetail(MigrationStats stats, String detail) {
+        if (stats.details.size() < MAX_DETAIL_SAMPLES) {
+            stats.details.add(detail);
+        }
     }
 
     private static List<Field> allFields(Class<?> type) {
@@ -548,6 +610,7 @@ final class DynaTechLegacyMigrationService {
         long legacyItemsFound;
         long blocksMigrated;
         long itemsMigrated;
+        long deferredEntries;
         long blockFailures;
         long itemFailures;
         long failures;
