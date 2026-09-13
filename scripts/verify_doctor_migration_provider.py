@@ -68,6 +68,14 @@ require("scanLoaded(repair)" in provider,
         "provider must delegate scan/repair to DynaTech's addon-owned migration service")
 require("Schema-deferred entries" in provider,
         "provider report must disclose schema-deferred entries")
+require("legacy smoker used an internal" in provider and "3x3 ingredient grid and two output slots" in provider,
+        "provider must preserve the verified historical Auto Kitchen internal-menu reason for deferral")
+require("requires external storage below and an explicitly selected recipe" in provider,
+        "provider must disclose the modern Kitchen Auto Crafter's incompatible storage/recipe semantics")
+require("remains deferred even when its old menu is empty" in provider,
+        "an empty legacy Auto Kitchen must not be treated as automatically equivalent to the modern machine")
+require("an ID-only rewrite is never considered lossless" in provider,
+        "provider must explicitly reject generic Auto Kitchen ID-only migration")
 require("fingerprinted execution plan" in provider,
         "dry-run output must preserve Slimefun Doctor's fingerprinted authorization boundary")
 require("DynaTechLegacyMigrationProviderBridge.register(this);" in plugin,
