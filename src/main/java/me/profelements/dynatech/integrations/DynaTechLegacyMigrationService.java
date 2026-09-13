@@ -257,21 +257,23 @@ final class DynaTechLegacyMigrationService {
                 stack.setItemMeta(bundleMeta);
                 changed = true;
             }
-        } else if (meta instanceof BlockStateMeta blockStateMeta
-                && blockStateMeta.getBlockState() instanceof InventoryHolder holder) {
-            Inventory nestedInventory = holder.getInventory();
-            boolean nestedChanged = false;
-            for (int slot = 0; slot < nestedInventory.getSize(); slot++) {
-                ItemStack nested = nestedInventory.getItem(slot);
-                if (inspectItem(nested, repair, stats, depth + 1)) {
-                    nestedInventory.setItem(slot, nested);
-                    nestedChanged = true;
+        } else if (meta instanceof BlockStateMeta blockStateMeta) {
+            BlockState nestedState = blockStateMeta.getBlockState();
+            if (nestedState instanceof InventoryHolder holder) {
+                Inventory nestedInventory = holder.getInventory();
+                boolean nestedChanged = false;
+                for (int slot = 0; slot < nestedInventory.getSize(); slot++) {
+                    ItemStack nested = nestedInventory.getItem(slot);
+                    if (inspectItem(nested, repair, stats, depth + 1)) {
+                        nestedInventory.setItem(slot, nested);
+                        nestedChanged = true;
+                    }
                 }
-            }
-            if (nestedChanged) {
-                blockStateMeta.setBlockState(blockStateMeta.getBlockState());
-                stack.setItemMeta(blockStateMeta);
-                changed = true;
+                if (nestedChanged) {
+                    blockStateMeta.setBlockState(nestedState);
+                    stack.setItemMeta(blockStateMeta);
+                    changed = true;
+                }
             }
         }
 
