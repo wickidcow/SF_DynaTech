@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static safety contract for the DynaTech Slimefun Legacy migration provider."""
+"""Static safety contract for the DynaTech Slimefun Legacy migration providers."""
 
 from pathlib import Path
 import sys
@@ -29,6 +29,7 @@ def reject(condition: bool, message: str) -> None:
 mappings = read("src/main/java/me/profelements/dynatech/integrations/SlimefunLegacyIdMappings.java")
 service = read("src/main/java/me/profelements/dynatech/integrations/DynaTechLegacyMigrationService.java")
 provider = read("src/main/java/me/profelements/dynatech/integrations/DynaTechLegacyMigrationProviderBridge.java")
+block_provider = read("src/main/java/me/profelements/dynatech/integrations/DynaTechLegacyBlockMigrationProviderBridge.java")
 plugin = read("src/main/java/me/profelements/dynatech/DynaTech.java")
 
 require("registerLegacySlimefunItemId" in mappings, "legacy mappings must still publish to Slimefun Doctor")
@@ -61,17 +62,44 @@ require("rollback" in service.lower(),
         "block migration must retain an explicit rollback path")
 
 require("Proxy.newProxyInstance" in provider,
-        "provider bridge must remain reflective/optional for non-Legacy Slimefun runtimes")
+        "legacy item provider bridge must remain reflective/optional for non-Legacy Slimefun runtimes")
 require("SlimefunLegacyIdMappings.mappings()" in provider,
         "provider mappings must use the exact same authority as registry publication")
 require("scanLoaded(repair)" in provider,
-        "provider must delegate scan/repair to DynaTech's addon-owned migration service")
+        "legacy item provider must delegate scan/repair to DynaTech's addon-owned migration service")
 require("Schema-deferred entries" in provider,
         "provider report must disclose schema-deferred entries")
 require("fingerprinted execution plan" in provider,
         "dry-run output must preserve Slimefun Doctor's fingerprinted authorization boundary")
+require("DynaTechLegacyBlockMigrationProviderBridge.register(plugin);" in provider,
+        "legacy provider registration must also offer the exact block provider when the API exists")
 require("DynaTechLegacyMigrationProviderBridge.register(this);" in plugin,
-        "DynaTech must register the migration provider after publishing mappings")
+        "DynaTech must register migration providers after publishing mappings")
+
+require("LegacyBlockMigrationProvider" in block_provider,
+        "exact placed-machine bridge must target Slimefun Legacy's block migration API")
+require("Proxy.newProxyInstance" in block_provider,
+        "exact machine bridge must remain reflective for older/non-Legacy Slimefun runtimes")
+require('DEFERRED = Set.of("AUTO_KITCHEN")' in block_provider,
+        "Auto Kitchen must remain excluded from generic exact machine execution")
+require("scanLoadedCandidates" in block_provider and "isCandidateStillValid" in block_provider,
+        "exact machine bridge must expose scan and immediate revalidation operations")
+require('MessageDigest.getInstance("SHA-256")' in block_provider,
+        "exact machine state claims must use SHA-256")
+require("snapshotData" in block_provider and "snapshotMenu" in block_provider,
+        "machine state claims must cover Slimefun KV state and menu contents")
+require("view.claim.equals" in block_provider,
+        "machine state must be compared again immediately before migration")
+require("isChunkLoaded" in block_provider,
+        "exact machine provider must reject unloaded candidate locations")
+require('privateMethod("migrateBlock"' in block_provider,
+        "exact machine provider must reuse DynaTech's rollback-safe migration primitive")
+reject("getChunkAt(" in block_provider,
+       "exact machine provider must never force-load chunks")
+reject("loadChunk(" in block_provider,
+       "exact machine provider must never force-load chunks")
+reject("setSfId" in block_provider,
+       "exact machine provider must not bypass the rollback-safe storage-controller migration")
 
 if errors:
     print("DynaTech Doctor migration verification failed:")
