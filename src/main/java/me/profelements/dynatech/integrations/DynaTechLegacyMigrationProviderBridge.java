@@ -25,6 +25,10 @@ public final class DynaTechLegacyMigrationProviderBridge {
     }
 
     public static void register(DynaTech plugin) {
+        // New Slimefun Legacy builds expose a separate exact placed-machine migration lane.
+        // Register it first, while retaining this older broad provider for items and backwards compatibility.
+        DynaTechLegacyBlockMigrationProviderBridge.register(plugin);
+
         if (registered) {
             return;
         }
