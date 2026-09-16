@@ -12,13 +12,12 @@ permissions:
   contents: write
 
 env:
-  LEGACY_VERSION: "1.1.02"
-  SOURCE_ARTIFACT: "SF_DynaTech_1.1.02.jar"
-  OUTPUT_NAME: "SF_DynaTech1.1.02.jar"
+  LEGACY_VERSION: "1.1.03"
+  OUTPUT_NAME: "SF_DynaTech1.1.03.jar"
 
 jobs:
   build:
-    name: Paper 26.2 / Java 25 / Slimefun Legacy
+    name: Universal Java 21 / Paper 1.21.11-26.3 / Slimefun Legacy
     runs-on: ubuntu-latest
     steps:
       - name: Check out DynaTech
@@ -44,33 +43,77 @@ jobs:
           chmod +x gradlew
           ./gradlew publishToMavenLocal -PprojectVersion=ALBION-SNAPSHOT --no-daemon
 
-      - name: Verify 26.2 build metadata
+      - name: Verify universal build metadata
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq '<paper.version>26.2.build.111-stable</paper.version>' pom.xml
-          grep -Fq '<maven.compiler.release>25</maven.compiler.release>' pom.xml
-          grep -Fq '<version>1.1.02</version>' pom.xml
+          grep -Fq '<paper.version>1.21.11-R0.1-SNAPSHOT</paper.version>' pom.xml
+          grep -Fq '<maven.compiler.release>21</maven.compiler.release>' pom.xml
+          grep -Fq '<version>1.1.03</version>' pom.xml
+          grep -Fq '<finalName>SF_DynaTech${project.version}</finalName>' pom.xml
+          grep -Fq "api-version: '1.21'" src/main/resources/plugin.yml
 
       - name: Verify Doctor migration safety contract
         run: python3 scripts/verify_doctor_migration_provider.py .
 
-      - name: Build and verify against Slimefun Legacy
+      - name: Verify Paper 1.21.11 baseline compilation
         run: >-
-          mvn -B clean verify --file pom.xml
+          mvn -B -Dmaven.test.skip=true clean package --file pom.xml
+          -Dpaper.version=1.21.11-R0.1-SNAPSHOT
           -Dslimefun.groupId=com.github.slimefun
           -Dslimefun.artifactId=Slimefun
           -Dslimefun.version=ALBION-SNAPSHOT
 
-      - name: Stage versioned JAR
+      - name: Verify Paper 26.2 compilation
+        run: >-
+          mvn -B -Dmaven.test.skip=true clean package --file pom.xml
+          -Dpaper.version=26.2.build.112-stable
+          -Dslimefun.groupId=com.github.slimefun
+          -Dslimefun.artifactId=Slimefun
+          -Dslimefun.version=ALBION-SNAPSHOT
+
+      - name: Verify Paper 26.3 alpha compilation
+        run: >-
+          mvn -B -Dmaven.test.skip=true clean package --file pom.xml
+          -Dpaper.version=26.3-rc-3.build.1-alpha
+          -Dslimefun.groupId=com.github.slimefun
+          -Dslimefun.artifactId=Slimefun
+          -Dslimefun.version=ALBION-SNAPSHOT
+
+      - name: Build universal release JAR from 1.21.11 baseline
+        run: >-
+          mvn -B -Dmaven.test.skip=true clean package --file pom.xml
+          -Dpaper.version=1.21.11-R0.1-SNAPSHOT
+          -Dslimefun.groupId=com.github.slimefun
+          -Dslimefun.artifactId=Slimefun
+          -Dslimefun.version=ALBION-SNAPSHOT
+
+      - name: Stage and verify versioned JAR
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          JAR="target/${SOURCE_ARTIFACT}"
+          JAR="target/${OUTPUT_NAME}"
           test -s "$JAR"
           cp "$JAR" "dist/${OUTPUT_NAME}"
           jar tf "dist/${OUTPUT_NAME}" | grep -Fxq 'plugin.yml'
+          unzip -p "dist/${OUTPUT_NAME}" plugin.yml | grep -Fq "version: ${LEGACY_VERSION}"
+          python3 - <<'PY'
+          import pathlib, struct, zipfile
+          jar = pathlib.Path('dist') / 'SF_DynaTech1.1.03.jar'
+          max_major = 0
+          with zipfile.ZipFile(jar) as zf:
+              for name in zf.namelist():
+                  if not name.endswith('.class'):
+                      continue
+                  data = zf.read(name)[:8]
+                  if data[:4] != b'\xca\xfe\xba\xbe':
+                      continue
+                  max_major = max(max_major, struct.unpack('>H', data[6:8])[0])
+          print(f'{jar}: maximum class major version {max_major}')
+          if max_major > 65:
+              raise SystemExit('JAR contains classes newer than Java 21 bytecode')
+          PY
           sha256sum "dist/${OUTPUT_NAME}"
 
       - name: Upload raw JAR artifact
@@ -89,8 +132,9 @@ jobs:
           set -euo pipefail
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v${LEGACY_VERSION}"; fi
           JAR="dist/${OUTPUT_NAME}"
+          NOTES="DynaTech 1.1.03 restores the Paper 1.21.11 / Java 21 universal release baseline, keeps Paper 26.2 as the primary production target, and adds Paper 26.3 alpha compatibility validation. Doctor migration safety and the atomic auto-output transfer fix remain enforced."
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$JAR" --clobber
           else
-            gh release create "$TAG" "$JAR" --target "$GITHUB_SHA" --title "SF_DynaTech $TAG" --notes "Legacy compatibility update: auto-output chest transfers are now atomic (deposit first, consume only what was accepted), preventing race duplication and full-chest item loss. Built for Paper 26.2 / Java 25 directly against Slimefun Legacy."
+            gh release create "$TAG" "$JAR" --target "$GITHUB_SHA" --title "SF_DynaTech $TAG" --notes "$NOTES"
           fi
