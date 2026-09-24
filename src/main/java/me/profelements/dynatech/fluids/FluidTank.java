@@ -1,9 +1,8 @@
 package me.profelements.dynatech.fluids;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -14,6 +13,9 @@ import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 import io.github.bakedlibs.dough.data.persistent.PersistentDataAPI;
 import io.github.thebusybiscuit.slimefun4.api.events.PlayerRightClickEvent;
@@ -44,22 +46,22 @@ public class FluidTank extends SlimefunItem implements Listener {
                     FluidStack handFluid = FluidStack.fromItemStack(handItem);
 
                     if (handFluid == null || !handItem.getType().equals(Material.BUCKET)) {
-                        handItem.setType(Material.BUCKET);
+                        event.getPlayer().getEquipment().setItem(event.getHand(), handItem.withType(Material.BUCKET));
                         return;
                     }
 
                     if (handFluid.fluid().equals(FluidStack.LAVA_FLUID)) {
-                        handItem.setType(Material.LAVA_BUCKET);
+                        event.getPlayer().getEquipment().setItem(event.getHand(), handItem.withType(Material.LAVA_BUCKET));
                         return;
                     }
 
                     if (handFluid.fluid().equals(FluidStack.WATER_FLUID)) {
-                        handItem.setType(Material.WATER_BUCKET);
+                        event.getPlayer().getEquipment().setItem(event.getHand(), handItem.withType(Material.WATER_BUCKET));
                         return;
                     }
 
                     if (handFluid.fluid().equals(FluidStack.MILK_FLUID)) {
-                        handItem.setType(Material.MILK_BUCKET);
+                        event.getPlayer().getEquipment().setItem(event.getHand(), handItem.withType(Material.MILK_BUCKET));
                         return;
                     }
                 }
@@ -101,10 +103,10 @@ public class FluidTank extends SlimefunItem implements Listener {
             event.setCancelled(true);
         }
 
-        ArrayList<String> lore = new ArrayList<>();
-        lore.add(ChatColor.WHITE + "Fluid Held: " + handFluid.fluid().toString());
-        lore.add(ChatColor.WHITE + "Fluid Amount: " + String.valueOf(handFluid.amount()));
-        handMeta.setLore(lore);
+        handMeta.lore(List.of(
+                Component.text("Fluid Held: " + handFluid.fluid(), NamedTextColor.WHITE),
+                Component.text("Fluid Amount: " + handFluid.amount(), NamedTextColor.WHITE)
+        ));
         handItem.setItemMeta(handMeta);
 
         event.setItemStack(handItem);
@@ -134,16 +136,14 @@ public class FluidTank extends SlimefunItem implements Listener {
         if (handFluid.amount() == 0) {
             PersistentDataAPI.setString(handMeta, FluidStack.FLUID_KEY, "");
             PersistentDataAPI.setInt(handMeta, FluidStack.FLUID_AMOUNT_KEY, 0);
-            handItem.setType(Material.BUCKET);
-
-            ArrayList<String> lore = new ArrayList<>();
-            handMeta.setLore(lore);
+            handItem = handItem.withType(Material.BUCKET);
+            handMeta.lore(List.of());
         } else {
 
-            ArrayList<String> lore = new ArrayList<>();
-            lore.add(ChatColor.WHITE + "Fluid Held: " + handFluid.fluid().toString());
-            lore.add(ChatColor.WHITE + "Fluid Amount: " + String.valueOf(handFluid.amount()));
-            handMeta.setLore(lore);
+            handMeta.lore(List.of(
+                    Component.text("Fluid Held: " + handFluid.fluid(), NamedTextColor.WHITE),
+                    Component.text("Fluid Amount: " + handFluid.amount(), NamedTextColor.WHITE)
+            ));
         }
 
         handItem.setItemMeta(handMeta);
