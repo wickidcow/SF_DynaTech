@@ -61,7 +61,7 @@ public interface LiquidStorage extends ItemAttribute {
 
     default String getLiquid(@Nonnull BlockPosition l, @Nonnull ASlimefunDataContainer data) {
         Preconditions.checkNotNull(l, "Location was null");
-        Preconditions.checkNotNull(config, "Config was null");
+        Preconditions.checkNotNull(data, "Data was null");
 
         String fluidName = data.getData("fluid-name");
 
