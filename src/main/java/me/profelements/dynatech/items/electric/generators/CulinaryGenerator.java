@@ -156,7 +156,7 @@ public class CulinaryGenerator extends AbstractGenerator {
             ItemMeta im = item.getItemMeta();
             List<Component> lore = new ArrayList<>();
             lore.add(LEGACY.deserialize(ChatColors.color("&8\u21E8 &7Lasts " + NumberUtils.getTimeLeft(fuel.getTicks() / 2))));
-            lore.add(ChatColors.color("&8\u21E8 &e\u26A1 &7" + getEnergyProduction() * 2) + " J/s");
+            lore.add(LEGACY.deserialize(ChatColors.color("&8⇨ &e⚡ &7" + getEnergyProduction() * 2 + " J/s")));
             lore.add(LEGACY.deserialize(ChatColors.color("&8\u21E8 &e\u26A1 &7" + NumberUtils.getCompactDouble((double) fuel.getTicks() * getEnergyProduction()) + " J in total")));
             im.lore(lore);
             item.setItemMeta(im);
