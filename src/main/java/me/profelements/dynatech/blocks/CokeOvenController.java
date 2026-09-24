@@ -29,9 +29,9 @@ import io.github.thebusybiscuit.slimefun4.core.handlers.BlockBreakHandler;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockUseHandler;
 import io.github.thebusybiscuit.slimefun4.libraries.paperlib.PaperLib;
 import io.github.thebusybiscuit.slimefun4.utils.SlimefunUtils;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.registries.ItemGroups;
 import me.profelements.dynatech.registries.Items;
@@ -62,7 +62,7 @@ public class CokeOvenController extends SlimefunItem {
             }
 
             @Override
-            public void tick(Block blk, SlimefunItem sfItem, Config cfg) {
+            public void tick(Block blk, SlimefunItem sfItem, ASlimefunDataContainer data) {
                 tickBlock(blk);
             }
 
@@ -77,14 +77,13 @@ public class CokeOvenController extends SlimefunItem {
                     validBlocks.add(new Pair<>(new BlockPosition(event.getClickedBlock().get().getLocation()),
                             event.getPlayer().getFacing()));
 
-                    BlockStorage.addBlockInfo(event.getClickedBlock().get(), "dynatech:valid", String.valueOf(true));
-                    BlockStorage.addBlockInfo(event.getClickedBlock().get(), "dynatech:facing",
-                            event.getPlayer().getFacing().toString());
+                    SlimefunStorage.setData(event.getClickedBlock().get(), "dynatech:valid", String.valueOf(true));
+                    SlimefunStorage.setData(event.getClickedBlock().get(), "dynatech:facing", event.getPlayer().getFacing().toString());
 
                     event.getPlayer().sendMessage("Coke Oven multiblock is valid.");
                 } else {
 
-                    BlockStorage.addBlockInfo(event.getClickedBlock().get(), "dynatech:valid", String.valueOf(false));
+                    SlimefunStorage.setData(event.getClickedBlock().get(), "dynatech:valid", String.valueOf(false));
                     event.getPlayer().sendMessage("Coke Oven multiblock is not valid.");
                 }
 
@@ -98,8 +97,8 @@ public class CokeOvenController extends SlimefunItem {
     public void tickBlock(Block blk) {
 
         // Check block storage for validity and add it to the Map if it is valid
-        String boolStr = BlockStorage.getLocationInfo(blk.getLocation(), "dynatech:valid");
-        String facingStr = BlockStorage.getLocationInfo(blk.getLocation(), "dynatech:facing");
+        String boolStr = SlimefunStorage.getData(blk.getLocation(), "dynatech:valid");
+        String facingStr = SlimefunStorage.getData(blk.getLocation(), "dynatech:facing");
 
         if (boolStr != null && facingStr != null) {
             Boolean valid = Boolean.valueOf(boolStr);
@@ -224,7 +223,7 @@ public class CokeOvenController extends SlimefunItem {
                             return pair.getFirstValue().equals(new BlockPosition(event.getBlock().getLocation()));
                         }));
 
-                BlockStorage.clearBlockInfo(event.getBlock());
+                SlimefunStorage.clear(event.getBlock());
             }
 
         };
@@ -300,8 +299,7 @@ public class CokeOvenController extends SlimefunItem {
             }
         }
 
-        Predicate<Block> isControl = blk -> (BlockStorage.checkID(blk)
-                .equals(Items.COAL_COKE_OVEN.stack().getItemId()));
+        Predicate<Block> isControl = blk -> (Items.COAL_COKE_OVEN.stack().getItemId().equals(SlimefunStorage.getId(blk)));
         pattern[2][1][0] = isControl;
 
         Predicate<Block> isBarrel = blk -> (blk.getType().equals(Material.BARREL));
