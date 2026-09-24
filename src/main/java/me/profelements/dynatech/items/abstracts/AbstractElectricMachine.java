@@ -49,7 +49,12 @@ public abstract class AbstractElectricMachine extends AbstractMachine implements
     }
 
     public int getCapacity() {
-        return energyCapacity; 
+        return energyCapacity;
+    }
+
+    @Override
+    public long getCapacityLong() {
+        return energyCapacity;
     }
 
     public int getEnergyConsumption() {
@@ -73,8 +78,8 @@ public abstract class AbstractElectricMachine extends AbstractMachine implements
     }
 
     public final AbstractElectricMachine setConsumption(int consumption) {
-        Preconditions.checkArgument(getCapacity() > 0, "Capacity must be set before consumption");
-        Preconditions.checkArgument(consumption < getCapacity() && consumption != 0, "Consuption can not be greater then capacity"); 
+        Preconditions.checkArgument(energyCapacity > 0, "Capacity must be set before consumption");
+        Preconditions.checkArgument(consumption < energyCapacity && consumption != 0, "Consuption can not be greater then capacity"); 
         
         this.energyConsumedPerTick = consumption;
         return this;
@@ -108,13 +113,13 @@ public abstract class AbstractElectricMachine extends AbstractMachine implements
         Preconditions.checkNotNull(l, "Can't take energy from a null location"); 
 
         if (isChargeable()) {
-            int charge = getCharge(l); 
+            long charge = getChargeLong(l);
 
-             if (charge < getEnergyConsumption()) {
+            if (charge < getEnergyConsumption()) {
                 return false;
-             }
+            }
 
-             setCharge(l, charge - getEnergyConsumption()); 
+            setCharge(l, charge - getEnergyConsumption()); 
         }
         return true; 
     }
