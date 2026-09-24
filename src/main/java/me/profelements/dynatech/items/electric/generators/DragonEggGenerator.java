@@ -21,7 +21,7 @@ public class DragonEggGenerator extends SlimefunItem implements EnergyNetProvide
     }
 
     @Override
-    public int getGeneratedOutput(@Nonnull Location location, @Nonnull Config config) {
+    public int getGeneratedOutput(@Nonnull Location location, @Nonnull ASlimefunDataContainer config) {
         Block dragonEgg = location.getBlock().getRelative(BlockFace.UP);
         if (dragonEgg.getType() == Material.DRAGON_EGG) {
             return 32;
