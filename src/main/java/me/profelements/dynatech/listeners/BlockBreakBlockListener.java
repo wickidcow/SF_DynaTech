@@ -9,7 +9,7 @@ import org.bukkit.plugin.Plugin;
 
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.papermc.paper.event.block.BlockBreakBlockEvent;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 
 public class BlockBreakBlockListener implements Listener {
 
@@ -20,10 +20,10 @@ public class BlockBreakBlockListener implements Listener {
     @EventHandler
     public void onBlockBreakBlock(BlockBreakBlockEvent event) {
 
-        SlimefunItem sfItem = BlockStorage.check(event.getBlock());
+        SlimefunItem sfItem = SlimefunStorage.getItem(event.getBlock());
 
         if (sfItem != null) {
-            BlockStorage.clearBlockInfo(event.getBlock());
+            SlimefunStorage.clear(event.getBlock());
 
             List<ItemStack> drops = event.getDrops();
             drops.clear();
