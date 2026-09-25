@@ -77,7 +77,7 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
             }
 
             if (SlimefunStorage.getData(wirelessEnergyBank, "id") != null && SlimefunStorage.getData(wirelessEnergyBank, "id")
-                    .equals(Items.WIRELESS_ENERGY_BANK.stack().getItemId()), "id") {
+                    .equals(Items.WIRELESS_ENERGY_BANK.stack().getItemId())) {
 
                 String energyCharge = SlimefunStorage.getData(l, "energy-charge");
                 if (energyCharge == null) {
