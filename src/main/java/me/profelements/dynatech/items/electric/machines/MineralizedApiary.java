@@ -1,7 +1,6 @@
 package me.profelements.dynatech.items.electric.machines;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.bukkit.Material;
@@ -11,6 +10,8 @@ import org.bukkit.block.BlockState;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 import io.github.thebusybiscuit.slimefun4.api.items.ItemGroup;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
@@ -153,8 +154,11 @@ public class MineralizedApiary extends AbstractElectricMachine {
         ItemStack item = PROGRESS_STACK.clone();
         ItemMeta meta = item.getItemMeta();
 
-        meta.setDisplayName("&fInfo");
-        meta.setLore(Arrays.asList("&fBee Count: " + beeCount, "&fCurrent Speed: " + currSpeed + "s"));
+        meta.displayName(Component.text("Info", NamedTextColor.WHITE));
+        meta.lore(List.of(
+                Component.text("Bee Count: " + beeCount, NamedTextColor.WHITE),
+                Component.text("Current Speed: " + currSpeed + "s", NamedTextColor.WHITE)
+        ));
         item.setItemMeta(meta); 
 
         menu.replaceExistingItem(20, item);
