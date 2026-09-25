@@ -6,7 +6,9 @@ import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
 import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.data.persistent.PersistentDataAPI;
 import me.profelements.dynatech.DynaTech;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -46,12 +48,12 @@ public class ItemBand extends SlimefunItem {
            
 
             ItemMeta im = item.getItemMeta();
-            List<String> lore = im.hasLore() ? im.getLore() : new ArrayList<>();
+            List<Component> lore = im.hasLore() ? new ArrayList<>(im.lore()) : new ArrayList<>();
             
-            lore.add(ChatColor.WHITE + "Bandaid: " + getPotionEffects()[0].getType().getKey().getKey());
+            lore.add(Component.text("Bandaid: " + getPotionEffects()[0].getType().getKey().getKey(), NamedTextColor.WHITE));
             PersistentDataAPI.setString(im, KEY, this.getId());
 
-            im.setLore(lore);
+            im.lore(lore);
             item.setItemMeta(im);
             return item;
         }
@@ -62,13 +64,13 @@ public class ItemBand extends SlimefunItem {
     public static ItemStack removeFromItem(@Nullable ItemStack item) {
         if (item != null && item.getType() != Material.AIR) {
             ItemMeta im = item.getItemMeta();
-            List<String> lore = im.getLore();
+            List<Component> lore = im.lore() == null ? new ArrayList<>() : new ArrayList<>(im.lore());
             
             im.getPersistentDataContainer().remove(KEY);
 
-            lore.removeIf(line -> line.contains(ChatColor.WHITE + "Bandaid: "));
+            lore.removeIf(line -> PlainTextComponentSerializer.plainText().serialize(line).contains("Bandaid: "));
     
-            im.setLore(lore);
+            im.lore(lore);
             item.setItemMeta(im);
 
             return item;
