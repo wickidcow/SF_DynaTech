@@ -12,16 +12,17 @@ import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.items.CustomItemStack;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenuPreset;
 import me.mrCookieSlime.Slimefun.api.inventory.DirtyChestMenu;
 import me.mrCookieSlime.Slimefun.api.item_transport.ItemTransportFlow;
 import me.profelements.dynatech.registries.Items;
 
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -84,7 +85,7 @@ public class WirelessItemInput extends SlimefunItem implements EnergyNetComponen
             }
 
             @Override
-            public void tick(Block block, SlimefunItem sfItem, Config data) {
+            public void tick(Block block, SlimefunItem sfItem, ASlimefunDataContainer data) {
                 WirelessItemInput.this.tick(block);
 
             }
@@ -97,7 +98,7 @@ public class WirelessItemInput extends SlimefunItem implements EnergyNetComponen
 
             @Override
             public void onPlayerBreak(BlockBreakEvent event, ItemStack block, List<ItemStack> drops) {
-                BlockMenu inv = BlockStorage.getInventory(event.getBlock());
+                BlockMenu inv = SlimefunStorage.getMenu(event.getBlock());
 
                 if (inv != null) {
                     inv.dropItems(event.getBlock().getLocation(), getInputSlots());
@@ -105,28 +106,31 @@ public class WirelessItemInput extends SlimefunItem implements EnergyNetComponen
 
                 }
 
-                BlockStorage.clearBlockInfo(event.getBlock().getLocation());
+                SlimefunStorage.clear(event.getBlock().getLocation());
             }
 
         };
     }
 
     protected void tick(Block b) {
-        BlockMenu menu = BlockStorage.getInventory(b);
-        updateKnowledgePane(menu, getCharge(b.getLocation()));
+        BlockMenu menu = SlimefunStorage.getMenu(b);
+        updateKnowledgePane(menu, getChargeLong(b.getLocation()));
     }
 
-    private void updateKnowledgePane(BlockMenu menu, int currentCharge) {
+    private void updateKnowledgePane(BlockMenu menu, long currentCharge) {
+        if (menu == null) {
+            return;
+        }
         ItemStack knowledgePane = menu.getItemInSlot(4);
         ItemMeta im = knowledgePane.getItemMeta();
-        List<String> lore = im.hasLore() ? im.getLore() : new ArrayList<>();
+        List<Component> lore = im.hasLore() ? im.lore() : new ArrayList<>();
 
         lore.clear();
-        lore.add(" ");
-        lore.add(ChatColor.WHITE + "Current Power: " + currentCharge);
-        lore.add(ChatColor.WHITE + "Current Status: Interesting.");
+        lore.add(Component.text(" "));
+        lore.add(Component.text("Current Power: " + currentCharge, NamedTextColor.WHITE));
+        lore.add(Component.text("Current Status: Interesting.", NamedTextColor.WHITE));
 
-        im.setLore(lore);
+        im.lore(lore);
         knowledgePane.setItemMeta(im);
     }
 
