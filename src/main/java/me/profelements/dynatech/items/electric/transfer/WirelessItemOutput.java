@@ -18,9 +18,9 @@ import io.github.thebusybiscuit.slimefun4.libraries.dough.items.CustomItemStack;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
 import io.github.thebusybiscuit.slimefun4.libraries.paperlib.PaperLib;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenuPreset;
 import me.mrCookieSlime.Slimefun.api.inventory.DirtyChestMenu;
@@ -29,7 +29,8 @@ import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.registries.Items;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -99,7 +100,7 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
             }
 
             @Override
-            public void tick(Block block, SlimefunItem sfItem, Config data) {
+            public void tick(Block block, SlimefunItem sfItem, ASlimefunDataContainer data) {
                 WirelessItemOutput.this.tick(block);
 
             }
@@ -146,7 +147,7 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
 
                 if (item.getType() == Items.WIRELESS_ITEM_OUTPUT.stack().getType() && item.hasItemMeta()
                         && locationString != null) {
-                    BlockStorage.addBlockInfo(blockLoc, "wireless-input-location", locationString);
+                    SlimefunStorage.setData(blockLoc, "wireless-input-location", locationString);
 
                 }
             }
@@ -159,7 +160,7 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
 
             @Override
             public void onPlayerBreak(BlockBreakEvent event, ItemStack block, List<ItemStack> drops) {
-                BlockMenu inv = BlockStorage.getInventory(event.getBlock());
+                BlockMenu inv = SlimefunStorage.getMenu(event.getBlock());
 
                 if (inv != null) {
                     inv.dropItems(event.getBlock().getLocation(), getInputSlots());
@@ -167,14 +168,14 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
 
                 }
 
-                BlockStorage.clearBlockInfo(event.getBlock().getLocation());
+                SlimefunStorage.clear(event.getBlock().getLocation());
             }
 
         };
     }
 
     protected void tick(Block b) {
-        String wirelessLocation = BlockStorage.getLocationInfo(b.getLocation(), "wireless-input-location");
+        String wirelessLocation = SlimefunStorage.getData(b.getLocation(), "wireless-input-location");
         if (wirelessLocation != null) {
             sendItemsFromInput(b, wirelessLocation);
 
@@ -196,23 +197,23 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
             }
         }
 
-        if (BlockStorage.checkID(wirelessItemInput) != null
-                && BlockStorage.checkID(wirelessItemInput).equals(Items.WIRELESS_ITEM_INPUT.stack().getItemId())) {
-            BlockMenu input = BlockStorage.getInventory(wirelessItemInput);
-            BlockMenu output = BlockStorage.getInventory(b);
-            updateKnowledgePane(output, getCharge(b.getLocation()));
+        if (SlimefunStorage.getData(wirelessItemInput, "id") != null
+                && SlimefunStorage.getData(wirelessItemInput, "id").equals(Items.WIRELESS_ITEM_INPUT.stack().getItemId())) {
+            BlockMenu input = SlimefunStorage.getMenu(wirelessItemInput);
+            BlockMenu output = SlimefunStorage.getMenu(b);
+            updateKnowledgePane(output, getChargeLong(b.getLocation()));
 
             for (int i : getOutputSlots()) {
-                if (getCharge(wirelessItemInput) < getEnergyConsumption()
-                        || getCharge(b.getLocation()) < getEnergyConsumption()) {
+                if (getChargeLong(wirelessItemInput) < getEnergyConsumption()
+                        || getChargeLong(b.getLocation()) < getEnergyConsumption()) {
                     return;
                 }
                 ItemStack itemStack = input.getItemInSlot(i);
 
                 if (itemStack != null && itemStack.getType() != Material.AIR
                         && InvUtils.fitAll(output.toInventory(), new ItemStack[] { itemStack }, getOutputSlots())) {
-                    removeCharge(wirelessItemInput, getEnergyConsumption());
-                    removeCharge(b.getLocation(), getEnergyConsumption());
+                    removeCharge(wirelessItemInput, (long) getEnergyConsumption());
+                    removeCharge(b.getLocation(), (long) getEnergyConsumption());
                     output.pushItem(itemStack, getOutputSlots());
                     itemStack.setAmount(0);
                 }
@@ -222,18 +223,21 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
 
     }
 
-    private void updateKnowledgePane(BlockMenu menu, int currentCharge) {
+    private void updateKnowledgePane(BlockMenu menu, long currentCharge) {
+        if (menu == null) {
+            return;
+        }
         ItemStack knowledgePane = menu.getItemInSlot(4);
         ItemMeta im = knowledgePane.getItemMeta();
-        List<String> lore = im.hasLore() ? im.getLore() : new ArrayList<>();
+        List<Component> lore = im.hasLore() ? im.lore() : new ArrayList<>();
 
         lore.clear();
-        lore.add(" ");
-        lore.add(ChatColor.WHITE + "Current Power: " + currentCharge);
-        lore.add(ChatColor.WHITE + "Current Status: " + ChatColor.RED + "CONNECTED");
-        knowledgePane.setType(Material.RED_STAINED_GLASS_PANE);
+        lore.add(Component.text(" "));
+        lore.add(Component.text("Current Power: " + currentCharge, NamedTextColor.WHITE));
+        lore.add(Component.text("Current Status: ", NamedTextColor.WHITE).append(Component.text("CONNECTED", NamedTextColor.RED)));
+        knowledgePane = knowledgePane.withType(Material.RED_STAINED_GLASS_PANE);
 
-        im.setLore(lore);
+        im.lore(lore);
         knowledgePane.setItemMeta(im);
     }
 
@@ -275,17 +279,19 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
 
     private void setItemLore(ItemStack item, Location l) {
         ItemMeta im = item.getItemMeta();
-        List<String> lore = im.getLore();
+        List<Component> lore = im.lore() == null ? new ArrayList<>() : new ArrayList<>(im.lore());
         for (int i = 0; i < lore.size(); i++) {
-            if (lore.get(i).contains("Location: ")) {
+            if (net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(lore.get(i)).contains("Location: ")) {
                 lore.remove(i);
             }
         }
 
-        lore.add(ChatColor.WHITE + "Location: " + l.getWorld().getName() + " " + l.getBlockX() + " " + l.getBlockY()
-                + " " + l.getBlockZ());
+        lore.add(Component.text(
+                "Location: " + l.getWorld().getName() + " " + l.getBlockX() + " " + l.getBlockY()
+                        + " " + l.getBlockZ(),
+                NamedTextColor.WHITE));
 
-        im.setLore(lore);
+        im.lore(lore);
         item.setItemMeta(im);
 
     }
