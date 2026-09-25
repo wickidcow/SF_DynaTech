@@ -15,7 +15,7 @@ import io.github.thebusybiscuit.slimefun4.libraries.paperlib.PaperLib;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
 import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
-import me.profelements.dynatech.utils.BlockDataUtils;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenuPreset;
 import me.mrCookieSlime.Slimefun.api.inventory.DirtyChestMenu;
@@ -108,7 +108,7 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
 
             @Override
             public void onPlayerBreak(BlockBreakEvent event, ItemStack block, List<ItemStack> drops) {
-                BlockMenu inv = BlockDataUtils.getInventory(event.getBlock().getLocation());
+                BlockMenu inv = SlimefunStorage.getMenu(event.getBlock().getLocation());
 
                 if (inv != null) {
                     inv.dropItems(event.getBlock().getLocation(), getInputSlots());
@@ -116,14 +116,14 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
 
                 }
 
-                BlockDataUtils.clear(event.getBlock().getLocation());
+                SlimefunStorage.clear(event.getBlock().getLocation());
             }
 
         };
     }
 
     protected void tick(Block b) {
-        String wirelessLocation = BlockDataUtils.getData(b.getLocation(), "tesseract-pair-location");
+        String wirelessLocation = SlimefunStorage.getData(b.getLocation(), "tesseract-pair-location");
         if (wirelessLocation != null) {
             sendItemsAndCharge(b, wirelessLocation);
 
@@ -144,12 +144,12 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
             }
         }
 
-        if (BlockDataUtils.checkId(tesseractPair) != null
-                && BlockDataUtils.checkId(tesseractPair).equals(Items.TESSERACT.stack().getItemId())) {
+        if (SlimefunStorage.getData(tesseractPair, "id") != null
+                && SlimefunStorage.getData(tesseractPair, "id").equals(Items.TESSERACT.stack().getItemId())) {
 
-            BlockMenu toMenu = BlockDataUtils.getInventory(b.getLocation());
+            BlockMenu toMenu = SlimefunStorage.getMenu(b.getLocation());
 
-            if (toMenu == null) {
+            if (toMenu == null, "id") {
                 return;
             }
 
@@ -162,7 +162,7 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
 
     @Override
     public int getGeneratedOutput(Location l, ASlimefunDataContainer data) {
-        String tesseractPairLocation = BlockDataUtils.getData(l, "tesseract-pair-location");
+        String tesseractPairLocation = SlimefunStorage.getData(l, "tesseract-pair-location");
 
         long chargedNeeded = getCapacityLong() - getChargeLong(l, data);
 
@@ -181,10 +181,10 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
                 }
             }
 
-            if (BlockDataUtils.checkId(tesseractPair) != null
-                    && BlockDataUtils.checkId(tesseractPair).equals(Items.TESSERACT.stack().getItemId())) {
+            if (SlimefunStorage.getData(tesseractPair, "id") != null
+                    && SlimefunStorage.getData(tesseractPair, "id").equals(Items.TESSERACT.stack().getItemId())) {
 
-                return EnergyUtils.moveEnergyFromTo(new BlockPosition(tesseractPair), new BlockPosition(l),
+                return EnergyUtils.moveEnergyFromTo(new BlockPosition(tesseractPair, "id"), new BlockPosition(l),
                         getEnergyRate(), getCapacity());
             }
 
