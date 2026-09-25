@@ -23,6 +23,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.ArrayList;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 public class DimensionalHome extends SlimefunItem {
 
@@ -69,12 +72,14 @@ public class DimensionalHome extends SlimefunItem {
 
     private void updateLore(@Nonnull ItemStack item) {
         ItemMeta im = item.getItemMeta();
-        List<String> lore = im.getLore();
+        List<Component> lore = im.lore() == null ? new ArrayList<>() : new ArrayList<>(im.lore());
 
         for (int line = 0; line < lore.size(); line++) {
-            if (lore.get(line).contains("CHUNK ID: <id>")) {
+            if (PlainTextComponentSerializer.plainText().serialize(lore.get(line)).contains("CHUNK ID: <id>")) {
                 id++;
-                lore.set(line, lore.get(line).replace("<id>", String.valueOf(id)));
+                lore.set(line, lore.get(line).replaceText(builder -> builder
+                        .matchLiteral("<id>")
+                        .replacement(String.valueOf(id))));
                 PersistentDataAPI.setInt(im, CHUNK_KEY, id);
 
                 // THIS IS PROBABLY BAD AND A BAD WAY TO KEEP AN CHUNK ID
@@ -84,7 +89,7 @@ public class DimensionalHome extends SlimefunItem {
 
         }
 
-        im.setLore(lore);
+        im.lore(lore);
         item.setItemMeta(im);
     }
 
