@@ -9,7 +9,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import io.github.bakedlibs.dough.data.persistent.PersistentDataAPI;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.DynaTech;
 
 public record FluidStack(NamespacedKey fluid, int amount) {
@@ -29,26 +29,26 @@ public record FluidStack(NamespacedKey fluid, int amount) {
     }
 
     public void toBlock(Block block) {
-        String fluidType = BlockStorage.getLocationInfo(block.getLocation(), FLUID_KEY.toString());
-        String fluidAmount = BlockStorage.getLocationInfo(block.getLocation(), FLUID_AMOUNT_KEY.toString());
+        String fluidType = SlimefunStorage.getData(block.getLocation(), FLUID_KEY.toString());
+        String fluidAmount = SlimefunStorage.getData(block.getLocation(), FLUID_AMOUNT_KEY.toString());
 
         if (fluidType != null && fluidType != this.fluid().toString()) {
             return;
         }
 
-        BlockStorage.addBlockInfo(block, FLUID_KEY.toString(), this.fluid().toString());
+        SlimefunStorage.setData(block, FLUID_KEY.toString(), this.fluid().toString());
 
         int amount = 0;
         if (fluidAmount != null) {
             amount = Integer.parseInt(fluidAmount);
         }
 
-        BlockStorage.addBlockInfo(block, FLUID_AMOUNT_KEY.toString(), String.valueOf(amount + this.amount()));
+        SlimefunStorage.setData(block, FLUID_AMOUNT_KEY.toString(), String.valueOf(amount + this.amount()));
     }
 
     public static @Nullable FluidStack fromBlock(Block block) {
-        String fluidType = BlockStorage.getLocationInfo(block.getLocation(), FLUID_KEY.toString());
-        String fluidAmount = BlockStorage.getLocationInfo(block.getLocation(), FLUID_AMOUNT_KEY.toString());
+        String fluidType = SlimefunStorage.getData(block.getLocation(), FLUID_KEY.toString());
+        String fluidAmount = SlimefunStorage.getData(block.getLocation(), FLUID_AMOUNT_KEY.toString());
 
         if (fluidType != null && fluidAmount != null) {
             return FluidStack.of(NamespacedKey.fromString(fluidType), Integer.parseInt(fluidAmount));

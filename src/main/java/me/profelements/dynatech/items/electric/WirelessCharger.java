@@ -26,7 +26,7 @@ public class WirelessCharger extends AbstractElectricTicker {
 
     @Override
     protected void tick(Block b, SlimefunItem slimefunItem) {
-        if (getCharge(b.getLocation()) < getEnergyConsumption()) {
+        if (getChargeLong(b.getLocation()) < getEnergyConsumption()) {
             return;
         }
 
@@ -39,7 +39,7 @@ public class WirelessCharger extends AbstractElectricTicker {
 
                     if (sfItem instanceof Rechargeable rcItem && rcItem.getItemCharge(item) != rcItem.getMaxItemCharge(item)) {
                         
-                        removeCharge(b.getLocation(), getEnergyConsumption());
+                        removeCharge(b.getLocation(), (long) getEnergyConsumption());
                         rcItem.addItemCharge(item, getEnergyConsumption());
                         p.updateInventory();
 

@@ -13,7 +13,9 @@ import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.registries.Items;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.GameMode;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -119,18 +121,21 @@ public class AngelGem extends SlimefunItem implements NotPlaceable, Listener {
             throw new IllegalArgumentException("This item does not have any lore!");
         }
 
-        List<String> lore = im.getLore();
+        List<Component> lore = new java.util.ArrayList<>(im.lore());
 
         for (int line = 0; line < lore.size(); line++) {
-            if (lore.get(line).contains("Flight: <enabled>")) {
-                lore.set(line, lore.get(line).replace("<enabled>", p.getAllowFlight() ? "Enabled" : "Disabled"));
+            String plain = PlainTextComponentSerializer.plainText().serialize(lore.get(line));
+            if (plain.contains("Flight: <enabled>")) {
+                lore.set(line, lore.get(line).replaceText(builder -> builder
+                        .matchLiteral("<enabled>")
+                        .replacement(p.getAllowFlight() ? "Enabled" : "Disabled")));
             }
-            if (lore.get(line).contains(ChatColor.GRAY + "Flight Speed: ")) {
-                lore.set(line, lore.get(line).replaceFirst(".*", ChatColor.GRAY + "Flight Speed: " + getFlySpeed()));
+            if (plain.contains("Flight Speed: ")) {
+                lore.set(line, Component.text("Flight Speed: " + getFlySpeed(), NamedTextColor.GRAY));
             }
         }
 
-        im.setLore(lore);
+        im.lore(lore);
         return im;
     }
 

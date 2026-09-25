@@ -11,7 +11,6 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 import io.github.bakedlibs.dough.blocks.BlockPosition;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 
 public class EnergyUtils {
@@ -25,8 +24,8 @@ public class EnergyUtils {
         Location toLocation = to.toLocation();
         String energyKey = "energy-charge";
 
-        String fromEnergyAmount = BlockStorage.getLocationInfo(fromLocation, energyKey);
-        String toEnergyAmount = BlockStorage.getLocationInfo(toLocation, energyKey);
+        String fromEnergyAmount = SlimefunStorage.getData(fromLocation, energyKey);
+        String toEnergyAmount = SlimefunStorage.getData(toLocation, energyKey);
         if (fromEnergyAmount == null || toEnergyAmount == null) {
             return 0;
         }
@@ -39,15 +38,15 @@ public class EnergyUtils {
         int newFromEnergy = fromEnergy - energyToTransfer;
         int newToEnergy = toEnergy + energyToTransfer;
 
-        BlockStorage.addBlockInfo(fromLocation, energyKey, String.valueOf(newFromEnergy));
-        BlockStorage.addBlockInfo(toLocation, energyKey, String.valueOf(newToEnergy));
+        SlimefunStorage.setData(fromLocation, energyKey, String.valueOf(newFromEnergy));
+        SlimefunStorage.setData(toLocation, energyKey, String.valueOf(newToEnergy));
 
         return energyToTransfer;
     }
 
     public static final void moveInventoryFromTo(BlockPosition from, BlockPosition to, int[] fromSlots, int[] toSlots) {
-        BlockMenu fromMenu = BlockStorage.getInventory(from.toLocation());
-        BlockMenu toMenu = BlockStorage.getInventory(to.toLocation());
+        BlockMenu fromMenu = SlimefunStorage.getMenu(from.toLocation());
+        BlockMenu toMenu = SlimefunStorage.getMenu(to.toLocation());
         if (fromMenu == null || toMenu == null) {
             return;
         }

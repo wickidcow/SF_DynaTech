@@ -28,9 +28,9 @@ import io.github.thebusybiscuit.slimefun4.libraries.dough.inventory.InvUtils;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.items.CustomItemStack;
 import io.github.thebusybiscuit.slimefun4.utils.SlimefunUtils;
 import io.github.thebusybiscuit.slimefun4.utils.itemstack.ItemStackWrapper;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.SlimefunBlockData;
 import me.mrCookieSlime.Slimefun.Objects.SlimefunItem.abstractItems.MachineFuel;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 
 public abstract class AbstractGenerator extends AbstractContainer implements MachineProcessHolder<FuelOperation>, RecipeDisplayItem, EnergyNetProvider {
@@ -50,7 +50,12 @@ public abstract class AbstractGenerator extends AbstractContainer implements Mac
 	}
      
     public int getCapacity() {
-        return energyCapacity; 
+        return energyCapacity;
+    }
+
+    @Override
+    public long getCapacityLong() {
+        return energyCapacity;
     }
 
     public int getEnergyProduction() {
@@ -70,8 +75,8 @@ public abstract class AbstractGenerator extends AbstractContainer implements Mac
     }
 
     public final AbstractGenerator setEnergyProduction(int production) {
-        Preconditions.checkArgument(getCapacity() > 0, "Capacity must be set before consumption");
-        Preconditions.checkArgument(production < getCapacity() && production != 0, "Consuption can not be greater then capacity"); 
+        Preconditions.checkArgument(energyCapacity > 0, "Capacity must be set before consumption");
+        Preconditions.checkArgument(production < energyCapacity && production != 0, "Consuption can not be greater then capacity"); 
         
         this.energyProduction = production;
         return this;
@@ -159,19 +164,19 @@ public abstract class AbstractGenerator extends AbstractContainer implements Mac
     }
 
     @Override
-    public int getGeneratedOutput(Location l, Config data) {
+    public int getGeneratedOutput(Location l, ASlimefunDataContainer data) {
         Block b = l.getBlock();
-        BlockMenu menu = BlockStorage.getInventory(b); 
+        BlockMenu menu = data instanceof SlimefunBlockData blockData ? blockData.getBlockMenu() : null; 
         
         FuelOperation currentOp = processor.getOperation(b);
         if (currentOp != null && menu != null) {
             if (checkFuelPreconditions(b)) {
                 
                 if(!currentOp.isFinished() && isChargeable()) {
-                    int charge = getCharge(l, data);
+                    long charge = getChargeLong(l, data);
                     processor.updateProgressBar(menu, 22, currentOp); 
                     
-                    if(getCapacity() - charge >= getEnergyProduction()) {
+                    if(getCapacityLong() - charge >= getEnergyProduction()) {
                         currentOp.addProgress(1);
                         return getEnergyProduction();
                     }                    

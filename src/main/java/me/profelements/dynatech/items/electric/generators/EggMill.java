@@ -16,8 +16,8 @@ import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
 import io.github.thebusybiscuit.slimefun4.core.attributes.EnergyNetProvider;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockBreakHandler;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockPlaceHandler;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.utils.Recipe;
 
 public class EggMill extends SlimefunItem implements EnergyNetProvider {
@@ -44,7 +44,7 @@ public class EggMill extends SlimefunItem implements EnergyNetProvider {
         return new BlockPlaceHandler(false) {
             @Override
             public void onPlayerPlace(BlockPlaceEvent event) {
-                BlockStorage.addBlockInfo(event.getBlock(), DURABILITY_STRING, String.valueOf(durabilityMax));
+                SlimefunStorage.setData(event.getBlock(), DURABILITY_STRING, String.valueOf(durabilityMax));
 
             }
         };
@@ -58,18 +58,18 @@ public class EggMill extends SlimefunItem implements EnergyNetProvider {
                 Location l = event.getBlock().getLocation();
 
                 int currDurability = Integer
-                        .parseInt(BlockStorage.getLocationInfo(l, DURABILITY_STRING));
+                        .parseInt(SlimefunStorage.getData(l, DURABILITY_STRING));
 
                 if (currDurability <= 0) {
                     event.setDropItems(false);
-                    String id = BlockStorage.getLocationInfo(l, "id");
+                    String id = SlimefunStorage.getData(l, "id");
                     if (id != null && SlimefunItem.getById(id + "_DEGRADED") != null) {
                         ItemStack item = SlimefunItem.getById(id + "_DEGRADED").getItem();
                         l.getWorld().dropItemNaturally(l, item);
                     }
                 }
 
-                BlockStorage.clearBlockInfo(l);
+                SlimefunStorage.clear(l);
             }
 
         };
@@ -82,10 +82,10 @@ public class EggMill extends SlimefunItem implements EnergyNetProvider {
     }
 
     @Override
-    public int getGeneratedOutput(Location l, Config cfg) {
+    public int getGeneratedOutput(Location l, ASlimefunDataContainer cfg) {
         int energy = 0;
         int currDurability = Integer
-                .parseInt(BlockStorage.getLocationInfo(l, DURABILITY_STRING));
+                .parseInt(SlimefunStorage.getData(l, DURABILITY_STRING));
 
         if (currDurability > 0) {
             Block block = l.getBlock().getRelative(BlockFace.UP);
@@ -94,7 +94,7 @@ public class EggMill extends SlimefunItem implements EnergyNetProvider {
             }
         }
 
-        BlockStorage.addBlockInfo(l, DURABILITY_STRING, String.valueOf(Math.max(currDurability - 1, 0)));
+        SlimefunStorage.setData(l, DURABILITY_STRING, String.valueOf(Math.max(currDurability - 1, 0)));
         return energy;
 
     }

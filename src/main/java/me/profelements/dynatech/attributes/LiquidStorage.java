@@ -10,8 +10,8 @@ import com.google.common.base.Preconditions;
 import io.github.bakedlibs.dough.blocks.BlockPosition;
 import io.github.thebusybiscuit.slimefun4.core.attributes.ItemAttribute;
 import io.github.thebusybiscuit.slimefun4.utils.NumberUtils;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.DynaTech;
 
 /**
@@ -33,18 +33,19 @@ public interface LiquidStorage extends ItemAttribute {
             return 0;
         }
 
-        return getLiquidAmount(l, BlockStorage.getLocationInfo(l.toLocation()));
+        ASlimefunDataContainer data = SlimefunStorage.getBlockData(l.toLocation());
+        return data == null ? 0 : getLiquidAmount(l, data);
     }
 
-    default int getLiquidAmount(@Nonnull BlockPosition l, Config config) {
+    default int getLiquidAmount(@Nonnull BlockPosition l, ASlimefunDataContainer data) {
         Preconditions.checkNotNull(l, "Location was null");
-        Preconditions.checkNotNull(config, "Config was null");
+        Preconditions.checkNotNull(data, "Data was null");
 
         if (!isFillable()) {
             return 0;
         }
 
-        String fluidAmount = config.getString("fluid-amount");
+        String fluidAmount = data.getData("fluid-amount");
 
         if (fluidAmount != null) {
             return Integer.parseInt(fluidAmount);
@@ -54,14 +55,15 @@ public interface LiquidStorage extends ItemAttribute {
     }
 
     default String getLiquid(@Nonnull BlockPosition l) {
-        return getLiquid(l, BlockStorage.getLocationInfo(l.toLocation()));
+        ASlimefunDataContainer data = SlimefunStorage.getBlockData(l.toLocation());
+        return data == null ? "NO_LIQUID" : getLiquid(l, data);
     }
 
-    default String getLiquid(@Nonnull BlockPosition l, @Nonnull Config config) {
+    default String getLiquid(@Nonnull BlockPosition l, @Nonnull ASlimefunDataContainer data) {
         Preconditions.checkNotNull(l, "Location was null");
-        Preconditions.checkNotNull(config, "Config was null");
+        Preconditions.checkNotNull(data, "Data was null");
 
-        String fluidName = config.getString("fluid-name");
+        String fluidName = data.getData("fluid-name");
 
         if (fluidName != null) {
             return fluidName;
@@ -81,7 +83,7 @@ public interface LiquidStorage extends ItemAttribute {
                 liquidAmount = NumberUtils.clamp(0, liquidAmount, liquidCapacity);
 
                 if (liquidAmount != getLiquidAmount(l)) {
-                    BlockStorage.addBlockInfo(l.toLocation(), "fluid-amount", String.valueOf(liquidAmount), false);
+                    SlimefunStorage.setData(l.toLocation(), "fluid-amount", String.valueOf(liquidAmount));
                 }
             }
         } catch (Exception | LinkageError x) {
@@ -101,7 +103,7 @@ public interface LiquidStorage extends ItemAttribute {
 
                 if (currentLiquidAmount < liquidCapacity) {
                     int newLiquidAmount = Math.min(liquidCapacity, currentLiquidAmount + liquidAmount);
-                    BlockStorage.addBlockInfo(l.toLocation(), "fluid-amount", String.valueOf(newLiquidAmount), false);
+                    SlimefunStorage.setData(l.toLocation(), "fluid-amount", String.valueOf(newLiquidAmount));
                 }
             }
         } catch (Exception | LinkageError x) {
@@ -120,7 +122,7 @@ public interface LiquidStorage extends ItemAttribute {
 
                 if (currentLiquidAmount > 0) {
                     int newLiquidAmount = Math.max(0, currentLiquidAmount - liquidAmount);
-                    BlockStorage.addBlockInfo(l.toLocation(), "fluid-amount", String.valueOf(newLiquidAmount), false);
+                    SlimefunStorage.setData(l.toLocation(), "fluid-amount", String.valueOf(newLiquidAmount));
                 }
             }
 
@@ -139,9 +141,9 @@ public interface LiquidStorage extends ItemAttribute {
             //changing fluids must happen when no other fluid is in the block
             if (liquidCapacity == 0) {
                 if (fluidName == null) {
-                    BlockStorage.addBlockInfo(l.toLocation(), "fluid-name", "NO_LIQUID", false);
+                    SlimefunStorage.setData(l.toLocation(), "fluid-name", "NO_LIQUID");
                 } else {
-                    BlockStorage.addBlockInfo(l.toLocation(), "fluid-name", fluidName, false);
+                    SlimefunStorage.setData(l.toLocation(), "fluid-name", fluidName);
                 }
             }
         } catch (Exception | LinkageError x) {

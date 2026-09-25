@@ -14,7 +14,7 @@ import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockBreakHandler;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockPlaceHandler;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
 
 public abstract class AbstractTicker extends SlimefunItem {
@@ -32,7 +32,7 @@ public abstract class AbstractTicker extends SlimefunItem {
             }
 
             @Override
-            public void tick(Block b, SlimefunItem item, Config data) {
+            public void tick(Block b, SlimefunItem item, ASlimefunDataContainer data) {
                 if (checkTickPreconditions(b)) {
                     AbstractTicker.this.tick(b, item);
                     onTickFinish(b); 

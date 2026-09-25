@@ -8,12 +8,11 @@ import io.github.thebusybiscuit.slimefun4.core.handlers.ItemUseHandler;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.data.persistent.PersistentDataAPI;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.items.electric.transfer.Tesseract;
 import me.profelements.dynatech.registries.Items;
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -44,12 +43,12 @@ public class TesseractBinder extends SlimefunItem {
 
                 if (e.getPlayer().isSneaking()) {
                     String locString = PersistentDataAPI.getString(item.getItemMeta(), Tesseract.WIRELESS_LOCATION_KEY);
-                    if (item != null && hasPermision
-                            && BlockStorage.checkID(blockLocation).equals(Items.TESSERACT.stack().getItemId())
+                    String blockId = SlimefunStorage.getData(blockLocation, "id");
+                    if (item != null && Boolean.TRUE.equals(hasPermision)
+                            && Items.TESSERACT.stack().getItemId().equals(blockId)
                             && item.hasItemMeta() && locString != null) {
-                        BlockStorage.addBlockInfo(blockLocation, "tesseract-pair-location", locString);
-                        e.getPlayer().spigot().sendMessage(ChatMessageType.ACTION_BAR,
-                                TextComponent.fromLegacy(ChatColor.WHITE + "Tesseract Connected!"));
+                        SlimefunStorage.setData(blockLocation, "tesseract-pair-location", locString);
+                        e.getPlayer().sendActionBar(Component.text("Tesseract Connected!", NamedTextColor.WHITE));
                     }
                 } else if (Boolean.TRUE.equals(hasPermision)
                         && sfItem.getId().equals(Items.TESSERACT.stack().getItemId()) && blockLocation != null) {

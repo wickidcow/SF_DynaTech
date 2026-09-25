@@ -16,7 +16,7 @@ import io.github.thebusybiscuit.slimefun4.implementation.operations.CraftingOper
 import io.github.thebusybiscuit.slimefun4.libraries.paperlib.PaperLib;
 import io.github.thebusybiscuit.slimefun4.utils.SlimefunUtils;
 import me.mrCookieSlime.Slimefun.Objects.SlimefunItem.abstractItems.AContainer;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.items.tools.AutoOutputUpgrade;
@@ -37,7 +37,7 @@ public class UpgradesListener implements Listener {
         checkInputUpgrade(e);
 
         Location l = e.getPosition().toLocation();
-        String upgrades = BlockStorage.getLocationInfo(l, "upgrades");
+        String upgrades = SlimefunStorage.getData(l, "upgrades");
         if (upgrades == null) {
             return;
         }
@@ -76,7 +76,7 @@ public class UpgradesListener implements Listener {
             return;
         }
 
-        BlockMenu menu = BlockStorage.getInventory(machineLocation);
+        BlockMenu menu = SlimefunStorage.getMenu(machineLocation);
         if (menu == null) {
             return;
         }
@@ -122,7 +122,7 @@ public class UpgradesListener implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) {
         Location l = e.getBlock().getLocation();
-        String upgrades = BlockStorage.getLocationInfo(l, "upgrades");
+        String upgrades = SlimefunStorage.getData(l, "upgrades");
 
         if (upgrades != null && upgrades.contains("auto_output")) {
             l.getWorld().dropItemNaturally(l, Items.AUTO_OUTPUT_UPGRADE.stack());
@@ -135,7 +135,7 @@ public class UpgradesListener implements Listener {
 
     private static void checkInputUpgrade(AsyncMachineOperationFinishEvent e) {
         Location l = e.getPosition().toLocation();
-        String upgrades = BlockStorage.getLocationInfo(l, "upgrades");
+        String upgrades = SlimefunStorage.getData(l, "upgrades");
         if (upgrades == null) {
             return;
         }
@@ -159,7 +159,7 @@ public class UpgradesListener implements Listener {
             DynaTech.runSync(() -> {
                 BlockState state = PaperLib.getBlockState(l.getBlock().getRelative(face), false).getState();
                 if (state instanceof Chest chest && e.getProcessor().getOwner() instanceof AContainer acont) {
-                    BlockMenu inv = BlockStorage.getInventory(l);
+                    BlockMenu inv = SlimefunStorage.getMenu(l);
                     if (inv == null) {
                         return;
                     }

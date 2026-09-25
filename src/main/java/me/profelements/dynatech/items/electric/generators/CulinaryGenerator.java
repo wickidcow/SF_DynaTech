@@ -19,12 +19,17 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+
 import javax.annotation.Nonnull;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class CulinaryGenerator extends AbstractGenerator {
+
+    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
    
     private static final int[] INPUT_SLOTS = new int[] { 19, 20 };
     private static final int[] OUTPUT_SLOTS = new int[] { 24, 25 };
@@ -149,11 +154,11 @@ public class CulinaryGenerator extends AbstractGenerator {
         for (MachineFuel fuel : fuels) {
             ItemStack item = fuel.getInput().clone();
             ItemMeta im = item.getItemMeta();
-            List<String> lore = new ArrayList<>();
-            lore.add(ChatColors.color("&8\u21E8 &7Lasts " + NumberUtils.getTimeLeft(fuel.getTicks() / 2)));
-            lore.add(ChatColors.color("&8\u21E8 &e\u26A1 &7" + getEnergyProduction() * 2) + " J/s");
-            lore.add(ChatColors.color("&8\u21E8 &e\u26A1 &7" + NumberUtils.getCompactDouble((double) fuel.getTicks() * getEnergyProduction()) + " J in total"));
-            im.setLore(lore);
+            List<Component> lore = new ArrayList<>();
+            lore.add(LEGACY.deserialize(ChatColors.color("&8\u21E8 &7Lasts " + NumberUtils.getTimeLeft(fuel.getTicks() / 2))));
+            lore.add(LEGACY.deserialize(ChatColors.color("&8⇨ &e⚡ &7" + getEnergyProduction() * 2 + " J/s")));
+            lore.add(LEGACY.deserialize(ChatColors.color("&8\u21E8 &e\u26A1 &7" + NumberUtils.getCompactDouble((double) fuel.getTicks() * getEnergyProduction()) + " J in total")));
+            im.lore(lore);
             item.setItemMeta(im);
             list.add(item);
         }

@@ -13,9 +13,9 @@ import io.github.thebusybiscuit.slimefun4.libraries.dough.items.CustomItemStack;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
 import io.github.thebusybiscuit.slimefun4.libraries.paperlib.PaperLib;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenuPreset;
 import me.mrCookieSlime.Slimefun.api.inventory.DirtyChestMenu;
@@ -24,7 +24,7 @@ import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.registries.Items;
 import me.profelements.dynatech.utils.EnergyUtils;
 import net.kyori.adventure.text.Component;
-import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -95,7 +95,7 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
             }
 
             @Override
-            public void tick(Block block, SlimefunItem sfItem, Config data) {
+            public void tick(Block block, SlimefunItem sfItem, ASlimefunDataContainer data) {
                 Tesseract.this.tick(block);
 
             }
@@ -108,7 +108,7 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
 
             @Override
             public void onPlayerBreak(BlockBreakEvent event, ItemStack block, List<ItemStack> drops) {
-                BlockMenu inv = BlockStorage.getInventory(event.getBlock());
+                BlockMenu inv = SlimefunStorage.getMenu(event.getBlock().getLocation());
 
                 if (inv != null) {
                     inv.dropItems(event.getBlock().getLocation(), getInputSlots());
@@ -116,14 +116,14 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
 
                 }
 
-                BlockStorage.clearBlockInfo(event.getBlock().getLocation());
+                SlimefunStorage.clear(event.getBlock().getLocation());
             }
 
         };
     }
 
     protected void tick(Block b) {
-        String wirelessLocation = BlockStorage.getLocationInfo(b.getLocation(), "tesseract-pair-location");
+        String wirelessLocation = SlimefunStorage.getData(b.getLocation(), "tesseract-pair-location");
         if (wirelessLocation != null) {
             sendItemsAndCharge(b, wirelessLocation);
 
@@ -144,16 +144,16 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
             }
         }
 
-        if (BlockStorage.checkID(tesseractPair) != null
-                && BlockStorage.checkID(tesseractPair).equals(Items.TESSERACT.stack().getItemId())) {
+        if (SlimefunStorage.getData(tesseractPair, "id") != null
+                && SlimefunStorage.getData(tesseractPair, "id").equals(Items.TESSERACT.stack().getItemId())) {
 
-            BlockMenu toMenu = BlockStorage.getInventory(b.getLocation());
+            BlockMenu toMenu = SlimefunStorage.getMenu(b.getLocation());
 
             if (toMenu == null) {
                 return;
             }
 
-            updateKnowledgePane(toMenu, getCharge(b.getLocation()));
+            updateKnowledgePane(toMenu, getChargeLong(b.getLocation()));
             EnergyUtils.moveInventoryFromTo(new BlockPosition(tesseractPair), new BlockPosition(b), getInputSlots(),
                     getOutputSlots());
         }
@@ -161,10 +161,10 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
     }
 
     @Override
-    public int getGeneratedOutput(Location l, Config data) {
-        String tesseractPairLocation = BlockStorage.getLocationInfo(l, "tesseract-pair-location");
+    public int getGeneratedOutput(Location l, ASlimefunDataContainer data) {
+        String tesseractPairLocation = SlimefunStorage.getData(l, "tesseract-pair-location");
 
-        int chargedNeeded = getCapacity() - getCharge(l);
+        long chargedNeeded = getCapacityLong() - getChargeLong(l, data);
 
         if (chargedNeeded != 0 && tesseractPairLocation != null) {
             Location tesseractPair = stringToLocation(tesseractPairLocation);
@@ -181,8 +181,8 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
                 }
             }
 
-            if (BlockStorage.checkID(tesseractPair) != null
-                    && BlockStorage.checkID(tesseractPair).equals(Items.TESSERACT.stack().getItemId())) {
+            if (SlimefunStorage.getData(tesseractPair, "id") != null
+                    && SlimefunStorage.getData(tesseractPair, "id").equals(Items.TESSERACT.stack().getItemId())) {
 
                 return EnergyUtils.moveEnergyFromTo(new BlockPosition(tesseractPair), new BlockPosition(l),
                         getEnergyRate(), getCapacity());
@@ -194,7 +194,7 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
         return 0;
     }
 
-    private void updateKnowledgePane(BlockMenu menu, int currentCharge) {
+    private void updateKnowledgePane(BlockMenu menu, long currentCharge) {
         if (menu == null) {
             return;
         }
@@ -205,8 +205,8 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
 
         lore.clear();
         lore.add(Component.text(" "));
-        lore.add(Component.text(ChatColor.WHITE + "Current Power: " + currentCharge));
-        lore.add(Component.text(ChatColor.WHITE + "Current Status: " + ChatColor.RED + "CONNECTED"));
+        lore.add(Component.text("Current Power: " + currentCharge, NamedTextColor.WHITE));
+        lore.add(Component.text("Current Status: ", NamedTextColor.WHITE).append(Component.text("CONNECTED", NamedTextColor.RED)));
 
         im.lore(lore);
         knowledgePane.setItemMeta(im);
@@ -264,8 +264,9 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
         }
 
         lore.add(Component.text(
-                ChatColor.WHITE + "Location: " + l.getWorld().getName() + " " + l.getBlockX() + " " + l.getBlockY()
-                        + " " + l.getBlockZ()));
+                "Location: " + l.getWorld().getName() + " " + l.getBlockX() + " " + l.getBlockY()
+                        + " " + l.getBlockZ(),
+                NamedTextColor.WHITE));
 
         im.lore(lore);
         item.setItemMeta(im);

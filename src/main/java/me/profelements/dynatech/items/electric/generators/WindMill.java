@@ -13,8 +13,8 @@ import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
 import io.github.thebusybiscuit.slimefun4.core.attributes.EnergyNetProvider;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockBreakHandler;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockPlaceHandler;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.utils.Recipe;
 
 public class WindMill extends SlimefunItem implements EnergyNetProvider {
@@ -47,7 +47,7 @@ public class WindMill extends SlimefunItem implements EnergyNetProvider {
 
             @Override
             public void onPlayerPlace(BlockPlaceEvent e) {
-                BlockStorage.addBlockInfo(e.getBlock(), dura, String.valueOf(durability));
+                SlimefunStorage.setData(e.getBlock(), dura, String.valueOf(durability));
             }
 
         };
@@ -60,17 +60,17 @@ public class WindMill extends SlimefunItem implements EnergyNetProvider {
             public void onPlayerBreak(BlockBreakEvent e, ItemStack item, List<ItemStack> drops) {
 
                 Location l = e.getBlock().getLocation();
-                int durability = Integer.parseInt(BlockStorage.getLocationInfo(l, dura));
+                int durability = Integer.parseInt(SlimefunStorage.getData(l, dura));
                 if (durability <= 0) {
 
                     e.setDropItems(false);
-                    String id = BlockStorage.getLocationInfo(l, "id");
+                    String id = SlimefunStorage.getData(l, "id");
                     if (id != null && SlimefunItem.getById(id + "_DEGRADED") != null) {
                         l.getWorld().dropItemNaturally(l, SlimefunItem.getById(id + "_DEGRADED").getItem());
                     }
                 }
 
-                BlockStorage.clearBlockInfo(l);
+                SlimefunStorage.clear(l);
             }
 
         };
@@ -82,13 +82,13 @@ public class WindMill extends SlimefunItem implements EnergyNetProvider {
     }
 
     @Override
-    public int getGeneratedOutput(Location l, Config cfg) {
+    public int getGeneratedOutput(Location l, ASlimefunDataContainer cfg) {
         int energy = 0;
 
         int durability = this.durability;
-        String locDurability = BlockStorage.getLocationInfo(l, dura);
+        String locDurability = SlimefunStorage.getData(l, dura);
         if (locDurability != null) {
-            durability = Integer.parseInt(BlockStorage.getLocationInfo(l, dura));
+            durability = Integer.parseInt(SlimefunStorage.getData(l, dura));
         }
 
         if (durability > 0) {
@@ -100,7 +100,7 @@ public class WindMill extends SlimefunItem implements EnergyNetProvider {
             energy = (int) yEnergy;
         }
         durability = Math.max(durability - 1, 0);
-        BlockStorage.addBlockInfo(l, dura, String.valueOf(durability));
+        SlimefunStorage.setData(l, dura, String.valueOf(durability));
 
         return energy;
     }

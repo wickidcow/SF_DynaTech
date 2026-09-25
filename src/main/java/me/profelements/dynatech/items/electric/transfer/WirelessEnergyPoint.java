@@ -15,13 +15,13 @@ import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.data.persistent.PersistentDataAPI;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
 import io.github.thebusybiscuit.slimefun4.libraries.paperlib.PaperLib;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.registries.Items;
 import me.profelements.dynatech.utils.EnergyUtils;
 import net.kyori.adventure.text.Component;
-import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -56,10 +56,10 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
     }
 
     @Override
-    public int getGeneratedOutput(Location l, Config data) {
-        String wirelessBankLocation = BlockStorage.getLocationInfo(l, "wireless-location");
+    public int getGeneratedOutput(Location l, ASlimefunDataContainer data) {
+        String wirelessBankLocation = SlimefunStorage.getData(l, "wireless-location");
 
-        int chargedNeeded = getCapacity() - getCharge(l);
+        long chargedNeeded = getCapacityLong() - getChargeLong(l, data);
 
         if (chargedNeeded != 0 && wirelessBankLocation != null) {
             Location wirelessEnergyBank = stringToLocation(wirelessBankLocation);
@@ -76,12 +76,12 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
                 }
             }
 
-            if (BlockStorage.checkID(wirelessEnergyBank) != null && BlockStorage.checkID(wirelessEnergyBank)
+            if (SlimefunStorage.getData(wirelessEnergyBank, "id") != null && SlimefunStorage.getData(wirelessEnergyBank, "id")
                     .equals(Items.WIRELESS_ENERGY_BANK.stack().getItemId())) {
 
-                String energyCharge = BlockStorage.getLocationInfo(l, "energy-charge");
+                String energyCharge = SlimefunStorage.getData(l, "energy-charge");
                 if (energyCharge == null) {
-                    BlockStorage.addBlockInfo(l, "energy-charge", String.valueOf(0));
+                    SlimefunStorage.setData(l, "energy-charge", "0");
                 }
 
                 EnergyUtils.moveEnergyFromTo(new BlockPosition(wirelessEnergyBank), new BlockPosition(l),
@@ -134,7 +134,7 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
 
                 if (item.getType() == Items.WIRELESS_ENERGY_POINT.stack().getType() && item.hasItemMeta()
                         && locationString != null) {
-                    BlockStorage.addBlockInfo(blockLoc, "wireless-location", locationString);
+                    SlimefunStorage.setData(blockLoc, "wireless-location", locationString);
 
                 }
             }
@@ -147,7 +147,7 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
 
             @Override
             public void onPlayerBreak(BlockBreakEvent event, ItemStack block, List<ItemStack> drops) {
-                BlockStorage.clearBlockInfo(event.getBlock().getLocation());
+                SlimefunStorage.clear(event.getBlock().getLocation());
             }
 
         };
@@ -172,8 +172,9 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
         }
 
         lore.add(Component.text(
-                ChatColor.WHITE + "Location: " + l.getWorld().getName() + " " + l.getBlockX() + " " + l.getBlockY()
-                        + " " + l.getBlockZ()));
+                "Location: " + l.getWorld().getName() + " " + l.getBlockX() + " " + l.getBlockY()
+                        + " " + l.getBlockZ(),
+                NamedTextColor.WHITE));
 
         im.lore(lore);
         item.setItemMeta(im);

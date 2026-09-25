@@ -9,7 +9,7 @@ import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.items.CustomItemStack;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenuPreset;
 import me.mrCookieSlime.Slimefun.api.item_transport.ItemTransportFlow;
@@ -73,11 +73,11 @@ public class WeatherController extends AbstractElectricTicker implements RecipeD
     }
 
     public void tick(Block b, SlimefunItem sfItem) {
-        if (getCharge(b.getLocation()) < getEnergyConsumption()) {
+        if (getChargeLong(b.getLocation()) < getEnergyConsumption()) {
             return;
         }
 
-        BlockMenu menu = BlockStorage.getInventory(b);
+        BlockMenu menu = SlimefunStorage.getMenu(b);
         ItemStack item = menu.getItemInSlot(4);
 
         if (item != null && (item.getType() == Material.SUNFLOWER || item.getType() == Material.LILAC || item.getType() == Material.CREEPER_HEAD)) {
@@ -87,7 +87,7 @@ public class WeatherController extends AbstractElectricTicker implements RecipeD
                 } 
                 DynaTech.runSync(() -> {
                     b.getWorld().setClearWeatherDuration(1200);
-                    removeCharge(b.getLocation(), getEnergyConsumption());
+                    removeCharge(b.getLocation(), (long) getEnergyConsumption());
                 });
             }
             
@@ -98,7 +98,7 @@ public class WeatherController extends AbstractElectricTicker implements RecipeD
                 DynaTech.runSync(() -> {
                     b.getWorld().setStorm(true);
                     b.getWorld().setWeatherDuration(1200);
-                    removeCharge(b.getLocation(), getEnergyConsumption());
+                    removeCharge(b.getLocation(), (long) getEnergyConsumption());
                 });
             }
 
@@ -109,7 +109,7 @@ public class WeatherController extends AbstractElectricTicker implements RecipeD
                 DynaTech.runSync(()-> {
                     b.getWorld().setThundering(true);
                     b.getWorld().setThunderDuration(1200);
-                    removeCharge(b.getLocation(), getEnergyConsumption());
+                    removeCharge(b.getLocation(), (long) getEnergyConsumption());
                 });
             }
         }

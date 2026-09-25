@@ -7,7 +7,7 @@ import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenuPreset;
 import me.mrCookieSlime.Slimefun.api.item_transport.ItemTransportFlow;
@@ -23,7 +23,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
@@ -104,11 +103,11 @@ public class PotionSprinkler extends AbstractElectricTicker {
 
     @Override
     public void tick(Block b, SlimefunItem sfItem) {
-        if (getCharge(b.getLocation()) < getEnergyConsumption()) {
+        if (getChargeLong(b.getLocation()) < getEnergyConsumption()) {
             return;
         }
 
-        BlockMenu menu = BlockStorage.getInventory(b);
+        BlockMenu menu = SlimefunStorage.getMenu(b);
         ItemStack item = menu.getItemInSlot(13);
 
         if (item != null && item.getType() == Material.POTION && item.hasItemMeta() && item.getItemMeta() instanceof PotionMeta potionMeta) {

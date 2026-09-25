@@ -14,10 +14,13 @@ import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction
 import io.github.thebusybiscuit.slimefun4.utils.SlimefunUtils;
 import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.registries.Items;
-import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.entity.EntityType;
@@ -79,15 +82,15 @@ public class LiquidTank extends SlimefunItem implements NotPlaceable, Listener {
                 PersistentDataAPI.setString(meta, FLUID_NAME, block.getType().toString());
                 PersistentDataAPI.setInt(meta, FLUID_AMOUNT, fluidAmount + 1000);
 
-                List<String> lore = new ArrayList<>();
-                lore.add(ChatColor.GRAY + "A Liquid tank holding up to 16 buckets of some liquids");
-                lore.add("");
-                lore.add("Right click to grab a liquid");
-                lore.add("Shift right click to place a liquid");
-                lore.add("");
-                lore.add(ChatColor.WHITE + "Fluid Held: " + PersistentDataAPI.getString(meta, FLUID_NAME));
-                lore.add(ChatColor.WHITE + "Fluid Amount: " + PersistentDataAPI.getInt(meta, FLUID_AMOUNT));
-                meta.setLore(lore);
+                List<Component> lore = new ArrayList<>();
+                lore.add(Component.text("A Liquid tank holding up to 16 buckets of some liquids", NamedTextColor.GRAY));
+                lore.add(Component.empty());
+                lore.add(Component.text("Right click to grab a liquid"));
+                lore.add(Component.text("Shift right click to place a liquid"));
+                lore.add(Component.empty());
+                lore.add(Component.text("Fluid Held: " + PersistentDataAPI.getString(meta, FLUID_NAME), NamedTextColor.WHITE));
+                lore.add(Component.text("Fluid Amount: " + PersistentDataAPI.getInt(meta, FLUID_AMOUNT), NamedTextColor.WHITE));
+                meta.lore(lore);
                 item.setItemMeta(meta);
                 DynaTech.runSync(() -> block.setType(Material.AIR));
             }
@@ -117,7 +120,7 @@ public class LiquidTank extends SlimefunItem implements NotPlaceable, Listener {
 
                     if (mat != null && e.getClickedBlock().isPresent()) {
                         Block block = e.getClickedBlock().get().getRelative(e.getClickedFace());
-                        if ((block.isLiquid() || block.getType().isAir()) && !block.getWorld().isUltraWarm()
+                        if ((block.isLiquid() || block.getType().isAir()) && block.getWorld().getEnvironment() != World.Environment.NETHER
                                 && Slimefun.getProtectionManager().hasPermission(e.getPlayer(), block.getLocation(),
                                         Interaction.PLACE_BLOCK)) {
                             ItemMeta meta = item.getItemMeta();
@@ -128,15 +131,15 @@ public class LiquidTank extends SlimefunItem implements NotPlaceable, Listener {
                             }
                             PersistentDataAPI.setInt(meta, FLUID_AMOUNT, fluidAmount - 1000);
 
-                            List<String> lore = new ArrayList<>();
-                            lore.add(ChatColor.GRAY + "A Liquid tank holding up to 16 buckets of some liquids");
-                            lore.add("");
-                            lore.add("Right click to grab a liquid");
-                            lore.add("Shift right click to place a liquid");
-                            lore.add("");
-                            lore.add(ChatColor.WHITE + "Fluid Held: " + PersistentDataAPI.getString(meta, FLUID_NAME));
-                            lore.add(ChatColor.WHITE + "Fluid Amount: " + PersistentDataAPI.getInt(meta, FLUID_AMOUNT));
-                            meta.setLore(lore);
+                            List<Component> lore = new ArrayList<>();
+                            lore.add(Component.text("A Liquid tank holding up to 16 buckets of some liquids", NamedTextColor.GRAY));
+                            lore.add(Component.empty());
+                            lore.add(Component.text("Right click to grab a liquid"));
+                            lore.add(Component.text("Shift right click to place a liquid"));
+                            lore.add(Component.empty());
+                            lore.add(Component.text("Fluid Held: " + PersistentDataAPI.getString(meta, FLUID_NAME), NamedTextColor.WHITE));
+                            lore.add(Component.text("Fluid Amount: " + PersistentDataAPI.getInt(meta, FLUID_AMOUNT), NamedTextColor.WHITE));
+                            meta.lore(lore);
                             item.setItemMeta(meta);
                             DynaTech.runSync(() -> block.setType(mat));
                         }
@@ -214,25 +217,24 @@ public class LiquidTank extends SlimefunItem implements NotPlaceable, Listener {
         int fluidAmount = PersistentDataAPI.getInt(item.getItemMeta(), FLUID_AMOUNT);
 
         ItemMeta im = item.getItemMeta();
-        List<String> lore = im.getLore();
+        List<Component> lore = im.lore() == null ? new ArrayList<>() : new ArrayList<>(im.lore());
 
         if (fluidName == null) {
             return;
         }
 
         for (int i = 0; i < lore.size(); i++) {
-            if (lore.get(i).contains("Fluid Held: ")) {
-
-                lore.set(i, ChatColor.WHITE + "Fluid Held: " + fluidName);
+            String plain = PlainTextComponentSerializer.plainText().serialize(lore.get(i));
+            if (plain.contains("Fluid Held: ")) {
+                lore.set(i, Component.text("Fluid Held: " + fluidName, NamedTextColor.WHITE));
             }
 
-            if (lore.get(i).contains("Amount: ")) {
-
-                lore.set(i, ChatColor.WHITE + "Amount: " + fluidAmount + "mb / " + getMaxLiquidAmount());
+            if (plain.contains("Amount: ")) {
+                lore.set(i, Component.text("Amount: " + fluidAmount + "mb / " + getMaxLiquidAmount(), NamedTextColor.WHITE));
             }
         }
 
-        im.setLore(lore);
+        im.lore(lore);
         item.setItemMeta(im);
     }
 

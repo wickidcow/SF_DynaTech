@@ -9,7 +9,7 @@ import io.github.thebusybiscuit.slimefun4.api.items.ItemGroup;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
 import io.github.thebusybiscuit.slimefun4.core.handlers.ItemUseHandler;
-import me.mrCookieSlime.Slimefun.api.BlockStorage;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.utils.Recipe;
 
 public class AutoInputUpgrade extends SlimefunItem {
@@ -25,22 +25,22 @@ public class AutoInputUpgrade extends SlimefunItem {
             if (optBlock.isPresent()) {
                 Block block = optBlock.get();
 
-                String upgrades = BlockStorage.getLocationInfo(block.getLocation(), "upgrades");
+                String upgrades = SlimefunStorage.getData(block.getLocation(), "upgrades");
 
                 if (upgrades != null && upgrades.contains("id:auto_input")) {
                     return;
                 }
 
                 String blockFaceString = AutoOutputUpgrade.blockFaceToString(e.getClickedFace());
-                if (blockFaceString == "invalid") {
+                if ("invalid".equals(blockFaceString)) {
                     return;
                 }
                 if (upgrades != null) {
-                    BlockStorage.addBlockInfo(block, "upgrades",
+                    SlimefunStorage.setData(block, "upgrades",
                             upgrades + "," + "{id:auto_input,face:" + blockFaceString + "}");
                 } else {
 
-                    BlockStorage.addBlockInfo(block, "upgrades", "{id:auto_input,face:" + blockFaceString + "}");
+                    SlimefunStorage.setData(block, "upgrades", "{id:auto_input,face:" + blockFaceString + "}");
                 }
             }
 
