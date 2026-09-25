@@ -20,7 +20,7 @@ import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
 import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockUseHandler;
-import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
 import me.profelements.dynatech.registries.RecipeTypes;
 import me.profelements.dynatech.registries.Registries;
@@ -46,7 +46,7 @@ public class PetalApothecary extends SlimefunItem {
             }
 
             @Override
-            public void tick(Block arg0, SlimefunItem arg1, Config arg2) {
+            public void tick(Block arg0, SlimefunItem arg1, ASlimefunDataContainer arg2) {
                 tickBlock(arg0);
             }
 
