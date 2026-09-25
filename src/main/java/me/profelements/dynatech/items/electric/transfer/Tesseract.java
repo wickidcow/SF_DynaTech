@@ -149,7 +149,7 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
 
             BlockMenu toMenu = SlimefunStorage.getMenu(b.getLocation());
 
-            if (toMenu == null, "id") {
+            if (toMenu == null) {
                 return;
             }
 
@@ -184,7 +184,7 @@ public class Tesseract extends SlimefunItem implements EnergyNetProvider {
             if (SlimefunStorage.getData(tesseractPair, "id") != null
                     && SlimefunStorage.getData(tesseractPair, "id").equals(Items.TESSERACT.stack().getItemId())) {
 
-                return EnergyUtils.moveEnergyFromTo(new BlockPosition(tesseractPair, "id"), new BlockPosition(l),
+                return EnergyUtils.moveEnergyFromTo(new BlockPosition(tesseractPair), new BlockPosition(l),
                         getEnergyRate(), getCapacity());
             }
 
