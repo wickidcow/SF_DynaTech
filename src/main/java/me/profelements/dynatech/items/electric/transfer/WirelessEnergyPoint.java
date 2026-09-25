@@ -16,7 +16,7 @@ import io.github.thebusybiscuit.slimefun4.libraries.dough.data.persistent.Persis
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
 import io.github.thebusybiscuit.slimefun4.libraries.paperlib.PaperLib;
 import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
-import me.profelements.dynatech.utils.BlockDataUtils;
+import me.profelements.dynatech.utils.SlimefunStorage;
 import me.profelements.dynatech.DynaTech;
 import me.profelements.dynatech.registries.Items;
 import me.profelements.dynatech.utils.EnergyUtils;
@@ -57,7 +57,7 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
 
     @Override
     public int getGeneratedOutput(Location l, ASlimefunDataContainer data) {
-        String wirelessBankLocation = BlockDataUtils.getData(l, "wireless-location");
+        String wirelessBankLocation = SlimefunStorage.getData(l, "wireless-location");
 
         long chargedNeeded = getCapacityLong() - getChargeLong(l, data);
 
@@ -76,12 +76,12 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
                 }
             }
 
-            if (BlockDataUtils.checkId(wirelessEnergyBank) != null && BlockDataUtils.checkId(wirelessEnergyBank)
-                    .equals(Items.WIRELESS_ENERGY_BANK.stack().getItemId())) {
+            if (SlimefunStorage.getData(wirelessEnergyBank, "id") != null && SlimefunStorage.getData(wirelessEnergyBank, "id")
+                    .equals(Items.WIRELESS_ENERGY_BANK.stack().getItemId()), "id") {
 
-                String energyCharge = BlockDataUtils.getData(l, "energy-charge");
+                String energyCharge = SlimefunStorage.getData(l, "energy-charge");
                 if (energyCharge == null) {
-                    BlockDataUtils.setData(l, "energy-charge", "0");
+                    SlimefunStorage.setData(l, "energy-charge", "0");
                 }
 
                 EnergyUtils.moveEnergyFromTo(new BlockPosition(wirelessEnergyBank), new BlockPosition(l),
@@ -134,7 +134,7 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
 
                 if (item.getType() == Items.WIRELESS_ENERGY_POINT.stack().getType() && item.hasItemMeta()
                         && locationString != null) {
-                    BlockDataUtils.setData(blockLoc, "wireless-location", locationString);
+                    SlimefunStorage.setData(blockLoc, "wireless-location", locationString);
 
                 }
             }
@@ -147,7 +147,7 @@ public class WirelessEnergyPoint extends SlimefunItem implements EnergyNetProvid
 
             @Override
             public void onPlayerBreak(BlockBreakEvent event, ItemStack block, List<ItemStack> drops) {
-                BlockDataUtils.clear(event.getBlock().getLocation());
+                SlimefunStorage.clear(event.getBlock().getLocation());
             }
 
         };
