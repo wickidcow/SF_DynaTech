@@ -1,0 +1,12 @@
+name: DynaTechWirelessProbe
+version: '1.0.0'
+main: audit.WirelessItemTransferProbe
+api-version: '1.21.11'
+depend: [Slimefun, DynaTech]
+commands:
+  dynatechwirelessprobe:
+    description: Disposable native wireless-transfer regression helper
+    permission: dynatechwirelessprobe.run
+permissions:
+  dynatechwirelessprobe.run:
+    default: op

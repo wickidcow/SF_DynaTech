@@ -12,8 +12,8 @@ permissions:
   contents: write
 
 env:
-  LEGACY_VERSION: "1.1.03"
-  OUTPUT_NAME: "SF_DynaTech1.1.03.jar"
+  LEGACY_VERSION: "1.1.04"
+  OUTPUT_NAME: "SF_DynaTech1.1.04.jar"
 
 jobs:
   build:
@@ -49,7 +49,7 @@ jobs:
           set -euo pipefail
           grep -Fq '<paper.version>1.21.11-R0.1-SNAPSHOT</paper.version>' pom.xml
           grep -Fq '<maven.compiler.release>21</maven.compiler.release>' pom.xml
-          grep -Fq '<version>1.1.03</version>' pom.xml
+          grep -Fq '<version>1.1.04</version>' pom.xml
           grep -Fq '<finalName>SF_DynaTech${project.version}</finalName>' pom.xml
           grep -Fq "api-version: '1.21'" src/main/resources/plugin.yml
 
@@ -58,7 +58,7 @@ jobs:
 
       - name: Verify Paper 1.21.11 baseline compilation
         run: >-
-          mvn -B -Dmaven.test.skip=true clean package --file pom.xml
+          mvn -B clean verify --file pom.xml
           -Dpaper.version=1.21.11-R0.1-SNAPSHOT
           -Dslimefun.groupId=com.github.slimefun
           -Dslimefun.artifactId=Slimefun
@@ -66,7 +66,7 @@ jobs:
 
       - name: Verify Paper 26.2 compilation
         run: >-
-          mvn -B -Dmaven.test.skip=true clean package --file pom.xml
+          mvn -B clean verify --file pom.xml
           -Dpaper.version=26.2.build.112-stable
           -Dslimefun.groupId=com.github.slimefun
           -Dslimefun.artifactId=Slimefun
@@ -74,7 +74,7 @@ jobs:
 
       - name: Verify Paper 26.3 alpha compilation
         run: >-
-          mvn -B -Dmaven.test.skip=true clean package --file pom.xml
+          mvn -B clean verify --file pom.xml
           -Dpaper.version=26.3-rc-3.build.1-alpha
           -Dslimefun.groupId=com.github.slimefun
           -Dslimefun.artifactId=Slimefun
@@ -82,11 +82,50 @@ jobs:
 
       - name: Build universal release JAR from 1.21.11 baseline
         run: >-
-          mvn -B -Dmaven.test.skip=true clean package --file pom.xml
+          mvn -B clean package --file pom.xml
           -Dpaper.version=1.21.11-R0.1-SNAPSHOT
           -Dslimefun.groupId=com.github.slimefun
           -Dslimefun.artifactId=Slimefun
           -Dslimefun.version=ALBION-SNAPSHOT
+
+      - name: Prepare pinned native wireless regression inputs
+        run: python3 scripts/runtime/prepare_wireless_probe_inputs.py --out .native-inputs
+
+      - name: Verify native wireless transfers and restart persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          inputs = json.loads(Path('.native-inputs/inputs.json').read_text())
+          if inputs.get('result') != 'PASS' or set(inputs['paper']) != {'1.21.11', '26.2', '26.3'}:
+              raise SystemExit('All three verified native runtime inputs are required')
+          for version in ('1.21.11', '26.2', '26.3'):
+              subprocess.run([
+                  'python3', 'scripts/runtime/run_wireless_transfer_probe.py',
+                  '--paper', inputs['paper'][version]['path'],
+                  '--core', inputs['core']['path'],
+                  '--addon', str(Path('target') / os.environ['OUTPUT_NAME']),
+                  '--work-dir', str(Path('.native-wireless') / version),
+                  '--java', str(Path(os.environ['JAVA_HOME']) / 'bin/java'),
+                  '--expect', 'fixed',
+              ], check=True)
+          PY
+
+      - name: Upload native wireless regression evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-wireless-transfer-reports
+          path: |
+            .native-inputs/inputs.json
+            .native-wireless/*/evidence/*
+          include-hidden-files: true
+          if-no-files-found: warn
 
       - name: Stage and verify versioned JAR
         shell: bash
@@ -100,7 +139,7 @@ jobs:
           unzip -p "dist/${OUTPUT_NAME}" plugin.yml | grep -Fq "version: ${LEGACY_VERSION}"
           python3 - <<'PY'
           import pathlib, struct, zipfile
-          jar = pathlib.Path('dist') / 'SF_DynaTech1.1.03.jar'
+          jar = pathlib.Path('dist') / 'SF_DynaTech1.1.04.jar'
           max_major = 0
           with zipfile.ZipFile(jar) as zf:
               for name in zf.namelist():
@@ -132,7 +171,7 @@ jobs:
           set -euo pipefail
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v${LEGACY_VERSION}"; fi
           JAR="dist/${OUTPUT_NAME}"
-          NOTES="DynaTech 1.1.03 restores the Paper 1.21.11 / Java 21 universal release baseline, keeps Paper 26.2 as the primary production target, and adds Paper 26.3 alpha compatibility validation. Doctor migration safety and the atomic auto-output transfer fix remain enforced."
+          NOTES="DynaTech 1.1.04 revalidates current Wireless Item Input/Output menus and linked locations before server-thread transfers. Transfers retain unaccepted source items, mark both changed menus for saving, and charge energy only when items move. Existing item IDs, metadata, linked-location format, slot order, whole-stack admission and normal eight-energy endpoint costs are preserved. The same release JAR is checked on three pinned Paper runtimes with transfer and restart tests. Minecraft 1.21.11 and Java 21 remain the runtime floor."
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$JAR" --clobber
           else
