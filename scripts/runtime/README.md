@@ -61,7 +61,9 @@ enabled.
 The 25 transfer cases and four restart cases in the runner and Java helper form
 one acceptance contract. A fixed run must pass every nonempty assertion set,
 report the exact case names once each, and report both registered wireless
-tickers as synchronized.
+tickers as synchronized. Every nonfatal phase, including an intentionally
+failing baseline phase, must also provide the required passing database
+readbacks and observed background-worker quiet window.
 
 The baseline must reproduce the 11 named transfer regressions and two named
 transfer-persistence failures, while all 14 ordinary transfer controls and both
@@ -86,11 +88,30 @@ The fixtures check these relationships:
 Persistence fixtures represent existing persisted machines. They first save
 their initial inventories, await the core's acknowledgment, positively check
 that both menus are clean, and let the normal delayed metadata and database
-write queues drain. After the actual production tick they use ordinary
-dirty-gated inventory saving. The helper again waits for normal queued metadata
-and database writes to drain before reporting the completed run and allowing
-shutdown. It records both pending-write counts in each report. Those counts are
-point-in-time diagnostics in this quiescent fixture, not a transaction barrier.
+write queues drain. The helper then reads the actual database through the core
+adapter's SELECT path, bypassing block/menu caches. It requires one exact
+machine record and the complete expected metadata map, including an explicit
+zero-charge row where applicable. A missing seed row is a fatal fixture failure.
+
+After the actual production tick the helper uses ordinary dirty-gated inventory
+saving, waits for normal queued writes, and reads back metadata for all four
+restart fixture pairs before stop. In the separate restart process it again
+requires those exact stored rows before evaluating the existing case assertions.
+The runner requires these metadata observation stages in order:
+
+| Phase | Stage | Entries | Observations per entry |
+| --- | --- | ---: | ---: |
+| Run | `initial-seed` | 5 | 2 |
+| Run | `before-stop` | 1 | 8 |
+| Read | `restart` | 8 | 1 |
+
+Every observation must be nonempty, pass, and contain matching expected/actual
+IDs and metadata values. Locations must be distinct, and the restart
+expectations must match the observed pre-stop fixtures. The first seed entry is
+the chunk-reload pair; the other four become the restart pairs. Queue counts are
+also recorded as point-in-time diagnostics. The adapter reads and queue counts
+are observations in a quiescent fixture, not a transaction barrier. No write is
+retried or forced to make a metadata readback pass.
 
 The harness must not force-save the affected inventories after the transfer:
 doing so would hide the source and destination dirty-marking regressions. The
@@ -111,6 +132,16 @@ indefinitely without another ticket.
 Virtual test handlers claim only uniquely marked test items and are removed in
 cleanup. They do not intercept `fitAll` or `pushItem`, alter the ordinary
 admission rule, or claim that unrelated production items have the same behavior.
+
+Before completing each phase, the helper passively observes core-owned Bukkit
+workers whose stack includes the core GitHub-service package. The quiet window
+can begin only after 620 server ticks have elapsed since helper enable; it then
+requires no matching workers across a 40-tick window sampled every five ticks.
+The report records the elapsed/quiet ticks, maximum matching worker count and
+observed task IDs, and the runner checks the required observation and thresholds.
+The wait is bounded and does not cancel tasks or alter core scheduling. The
+strict log gate still rejects a late callback exception. This establishes the
+observed idle interval, not a guarantee that no future background task can start.
 
 ## Evidence and limits
 

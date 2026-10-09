@@ -112,6 +112,92 @@ def require_metrics_disabled(config: Path) -> None:
         raise RuntimeError("Disposable native runs require exactly one bStats enabled: false setting")
 
 
+def inspect_prerequisites(report: dict, phase: str) -> list[str]:
+    """Require actual metadata reads and an observed idle window in nonfatal reports."""
+    problems: list[str] = []
+    expected_stages = ([("initial-seed", 2)] * 5 + [("before-stop", 8)]
+                       if phase == "run" else [("restart", 1)] * 8)
+    stages = report.get("metadata_readbacks")
+    locations_by_stage: list[list[str]] = []
+    if not isinstance(stages, list) or len(stages) != len(expected_stages):
+        problems.append(f"Wrong {phase} metadata readback stage count")
+    if isinstance(stages, list):
+        for index, stage in enumerate(stages):
+            label = f"{phase} metadata readback {index + 1}"
+            if not isinstance(stage, dict) or index >= len(expected_stages):
+                problems.append(f"Malformed or extra {label}")
+                continue
+            expected_stage, expected_count = expected_stages[index]
+            observations = stage.get("observations")
+            if (stage.get("stage") != expected_stage or not isinstance(observations, list)
+                    or len(observations) != expected_count):
+                problems.append(f"Wrong stage or observation count: {label}")
+                continue
+            locations: list[str] = []
+            for observation in observations:
+                if not isinstance(observation, dict):
+                    problems.append(f"Malformed observation: {label}")
+                    continue
+                location = observation.get("location")
+                expected_id = observation.get("expected_id")
+                expected = observation.get("expected_values")
+                actual = observation.get("actual_values")
+                if not isinstance(location, str) or not location:
+                    problems.append(f"Missing observation location: {label}")
+                else:
+                    locations.append(location)
+                valid_expected = (isinstance(expected, dict) and bool(expected)
+                                  and all(isinstance(key, str) and isinstance(value, str)
+                                          for key, value in expected.items()))
+                valid_actual = (isinstance(actual, dict)
+                                and all(isinstance(key, str) and isinstance(value, str)
+                                        for key, value in actual.items()))
+                if (observation.get("passed") is not True or observation.get("mismatches") != []
+                        or type(observation.get("actual_record_count")) is not int
+                        or observation["actual_record_count"] != 1
+                        or not isinstance(expected_id, str) or expected_id not in EXPECTED_TICKERS
+                        or observation.get("actual_id") != expected_id
+                        or not valid_expected or not valid_actual or actual != expected):
+                    problems.append(f"Failed or inconsistent actual-database observation: {label}")
+                if valid_expected:
+                    if (not re.fullmatch(r"\d+", expected.get("energy-charge", ""))
+                            or not expected.get("wireless-probe-sentinel")):
+                        problems.append(f"Missing explicit charge or sentinel row: {label}")
+                    if expected_id == "DYNATECH_WIRELESS_ITEM_OUTPUT" and not expected.get("wireless-input-location"):
+                        problems.append(f"Missing stored output link: {label}")
+                    if expected_id == "DYNATECH_WIRELESS_ITEM_INPUT" and "wireless-input-location" in expected:
+                        problems.append(f"Unexpected stored input link: {label}")
+            if len(set(locations)) != len(locations):
+                problems.append(f"Duplicate observation location: {label}")
+            locations_by_stage.append(locations)
+        if len(locations_by_stage) == len(expected_stages):
+            initial = [location for group in locations_by_stage[:-1] for location in group] if phase == "run" else []
+            if phase == "run" and len(set(initial)) != len(initial):
+                problems.append("Duplicate initial metadata seed locations")
+            if phase == "run" and set(locations_by_stage[-1]) != set(initial[2:]):
+                problems.append("Before-stop metadata locations differ from the four seeded restart pairs")
+            if phase == "read":
+                restarted = [location for group in locations_by_stage for location in group]
+                if len(set(restarted)) != 8:
+                    problems.append("Restart metadata does not cover eight distinct machines")
+
+    quiet = report.get("github_background_quiescence")
+    if not isinstance(quiet, dict):
+        problems.append(f"Missing {phase} GitHub background quiescence observation")
+    else:
+        counts = ("observed_quiet_ticks", "enabled_at_tick", "finished_at_tick")
+        valid_counts = all(type(quiet.get(key)) is int for key in counts)
+        if (quiet.get("observed") is not True or quiet.get("initial_eligibility_ticks") != 620
+                or quiet.get("quiet_window_ticks") != 40 or not valid_counts):
+            problems.append(f"Malformed or unobserved {phase} GitHub background quiescence")
+        elif (quiet["observed_quiet_ticks"] < 40
+              or quiet["finished_at_tick"] - quiet["enabled_at_tick"] < 620
+              or quiet["finished_at_tick"] - quiet["enabled_at_tick"] - quiet["observed_quiet_ticks"] < 620
+              or quiet["observed_quiet_ticks"] > quiet["finished_at_tick"] - quiet["enabled_at_tick"]):
+            problems.append(f"Insufficient observed {phase} GitHub background quiet window")
+    return problems
+
+
 def inspect_report(report: dict, phase: str, expected_names: set[str]) -> tuple[dict, list[str]]:
     """Reject missing, duplicate, empty or internally inconsistent case evidence."""
     problems: list[str] = []
@@ -121,6 +207,8 @@ def inspect_report(report: dict, phase: str, expected_names: set[str]) -> tuple[
         return cases, [f"Invalid {phase} report phase or case list"]
     if report.get("fatal") is not None:
         problems.append(f"Fatal {phase} helper failure: {report.get('fatal')}")
+    else:
+        problems.extend(inspect_prerequisites(report, phase))
     for row in rows:
         if not isinstance(row, dict) or not isinstance(row.get("name"), str):
             problems.append(f"Malformed {phase} case row")
@@ -407,6 +495,13 @@ def main() -> int:
     restart = manifest["phases"][-1]["result"]
     cases, transfer_problems = inspect_report(transfer, "run", EXPECTED_CASES)
     restart_cases, restart_problems = inspect_report(restart, "read", EXPECTED_RESTART_CASES)
+    if not transfer_problems and not restart_problems:
+        before_stop = {row["location"]: (row["expected_id"], row["expected_values"])
+                       for row in transfer["metadata_readbacks"][-1]["observations"]}
+        after_restart = {row["location"]: (row["expected_id"], row["expected_values"])
+                         for stage in restart["metadata_readbacks"] for row in stage["observations"]}
+        if before_stop != after_restart:
+            restart_problems.append("Restart metadata expectations differ from the observed pre-stop fixtures")
     failures = {name for name, case in cases.items() if case.get("passed") is not True}
     restart_failures = {name for name, case in restart_cases.items() if case.get("passed") is not True}
     case_set_ok = not transfer_problems and not restart_problems

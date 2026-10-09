@@ -3,10 +3,16 @@ package audit;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.xzavier0722.mc.plugin.slimefun4.storage.common.DataScope;
+import com.xzavier0722.mc.plugin.slimefun4.storage.common.FieldKey;
+import com.xzavier0722.mc.plugin.slimefun4.storage.common.RecordKey;
+import com.xzavier0722.mc.plugin.slimefun4.storage.common.RecordSet;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ADataController;
 import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
 import com.xzavier0722.mc.plugin.slimefun4.storage.controller.BlockDataController;
 import com.xzavier0722.mc.plugin.slimefun4.storage.controller.SlimefunBlockData;
 import com.xzavier0722.mc.plugin.slimefun4.storage.util.LocationUtils;
+import com.xzavier0722.mc.plugin.slimefun4.storage.util.DataUtils;
 import com.xzavier0722.mc.plugin.slimefun4.storage.util.StorageCacheUtils;
 import io.github.thebusybiscuit.slimefun4.api.SlimefunAddon;
 import io.github.thebusybiscuit.slimefun4.api.items.ItemGroup;
@@ -21,6 +27,7 @@ import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.inventory.InvUtils;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +39,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -73,12 +81,21 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
     private static final int[] SLOTS = java.util.stream.IntStream.rangeClosed(9, 44).toArray();
     private final List<Map<String, Object>> results = new ArrayList<>();
     private final List<Map<String, Object>> restartFixtures = new ArrayList<>();
+    private final List<NativeMetadataReadback.Expected> restartMetadata = new ArrayList<>();
+    private final List<Map<String, Object>> metadataEvidence = new ArrayList<>();
     private BlockDataController blocks;
+    private NativeMetadataReadback metadata;
     private World world;
     private int fixtureNumber;
+    private int enabledAtTick;
+    private int observedGithubWorkers;
+    private int observedQuietTicks;
+    private final java.util.Set<Integer> observedGithubTaskIds = new java.util.LinkedHashSet<>();
+    private boolean backgroundQuiet;
     private boolean running;
 
     @Override public void onEnable() {
+        enabledAtTick = Bukkit.getCurrentTick();
         getLogger().info("Native helper ready; checks run only after its console command.");
     }
 
@@ -93,10 +110,12 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
         }
         running = true;
         blocks = Slimefun.getDatabaseManager().getBlockDataController();
+        metadata = new NativeMetadataReadback(blocks);
         world = Bukkit.getWorlds().getFirst();
         Slimefun.getTickerTask().pauseItemTicker(INPUT_ID);
         Slimefun.getTickerTask().pauseItemTicker(OUTPUT_ID);
-        CompletableFuture<Void> phase = args[0].equals("run") ? runChecks() : readChecks();
+        CompletableFuture<Void> phase = (args[0].equals("run") ? runChecks() : readChecks())
+                .thenCompose(ignored -> awaitGithubIdle(System.nanoTime() + 120_000_000_000L, -1));
         phase.whenComplete((ignored, failure) -> owner(() -> {
             finish(args[0], failure);
             return null;
@@ -143,6 +162,7 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
         }
         return chain.thenCompose(ignored -> ownerCompose(this::prepareRestartControls))
                 .thenCompose(ignored -> awaitQueuedDataWrites())
+                .thenCompose(ignored -> requireStoredMetadata("before-stop", restartMetadata, 100))
                 .thenCompose(ignored -> owner(() -> {
                     writeJson(getDataFolder().toPath().resolve("restart-fixtures.json"), restartFixtures);
                     return (Void) null;
@@ -483,9 +503,13 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
     }
 
     private CompletableFuture<Void> checkpoint(Pair p) {
+        List<NativeMetadataReadback.Expected> expected = List.of(
+                NativeMetadataReadback.capture(p.input.data, p.input.energy.getChargeLong(p.input.location), SENTINEL),
+                NativeMetadataReadback.capture(p.output.data, p.output.energy.getChargeLong(p.output.location), SENTINEL));
         return CompletableFuture.allOf(blocks.saveBlockInventoryAsync(p.input.data), blocks.saveBlockInventoryAsync(p.output.data))
                 .thenCompose(ignored -> waitUntil(() -> !p.input.menu.isDirty() && !p.output.menu.isDirty(), 240))
-                .thenCompose(ignored -> awaitQueuedDataWrites());
+                .thenCompose(ignored -> awaitQueuedDataWrites())
+                .thenCompose(ignored -> requireStoredMetadata("initial-seed", expected, 100));
     }
 
     private CompletableFuture<Void> awaitQueuedDataWrites() {
@@ -493,6 +517,53 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
         // delayed KV writer and database queue finish; do not force-save menus.
         return waitUntil(() -> blocks.getPendingDelayedWriteTaskCount() == 0
                 && blocks.getPendingWriteTaskCount() == 0, 500);
+    }
+
+    private CompletableFuture<List<NativeMetadataReadback.Observation>> readMetadata(List<NativeMetadataReadback.Expected> expected) {
+        CompletableFuture<List<NativeMetadataReadback.Observation>> future = new CompletableFuture<>();
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            try { future.complete(expected.stream().map(metadata::read).toList()); }
+            catch (Throwable failure) { future.completeExceptionally(failure); }
+        });
+        return future;
+    }
+
+    private CompletableFuture<Void> requireStoredMetadata(String stage, List<NativeMetadataReadback.Expected> expected, int attempts) {
+        return readMetadata(expected).thenCompose(observed -> ownerCompose(() -> {
+            boolean matches = observed.stream().allMatch(NativeMetadataReadback.Observation::passed);
+            if (matches || attempts <= 0) {
+                metadataEvidence.add(Map.of("stage", stage, "observations", observed.stream().map(NativeMetadataReadback.Observation::evidence).toList()));
+                if (!matches) return CompletableFuture.failedFuture(new IllegalStateException("Actual database metadata readback failed: " + stage));
+                return CompletableFuture.completedFuture(null);
+            }
+            return delay(2).thenCompose(ignored -> requireStoredMetadata(stage, expected, attempts - 1));
+        }));
+    }
+
+    private CompletableFuture<Void> awaitGithubIdle(long deadline, int quietSinceTick) {
+        return ownerCompose(() -> {
+            if (System.nanoTime() > deadline)
+                return CompletableFuture.failedFuture(new IllegalStateException("Core GitHub workers did not become idle before ordinary shutdown"));
+            var core = Bukkit.getPluginManager().getPlugin("Slimefun");
+            var active = Bukkit.getScheduler().getActiveWorkers().stream()
+                    .filter(worker -> worker.getOwner() == core)
+                    .filter(worker -> Arrays.stream(worker.getThread().getStackTrace()).anyMatch(frame ->
+                            frame.getClassName().startsWith("io.github.thebusybiscuit.slimefun4.core.services.github.")))
+                    .toList();
+            active.forEach(worker -> observedGithubTaskIds.add(worker.getTaskId()));
+            observedGithubWorkers = Math.max(observedGithubWorkers, active.size());
+            // Core starts its contributor refresh at tick600. Observe beyond
+            // that eligibility before accepting an idle window; cancel nothing.
+            int currentTick = Bukkit.getCurrentTick();
+            int quietStart = active.isEmpty() && currentTick - enabledAtTick >= 620
+                    ? (quietSinceTick < 0 ? currentTick : quietSinceTick) : -1;
+            observedQuietTicks = quietStart < 0 ? 0 : currentTick - quietStart;
+            if (observedQuietTicks >= 40) {
+                backgroundQuiet = true;
+                return CompletableFuture.completedFuture(null);
+            }
+            return delay(5).thenCompose(ignored -> awaitGithubIdle(deadline, quietStart));
+        });
     }
 
     private static void requireClean(Pair p) {
@@ -546,6 +617,8 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
         fixture.put("input", describe(p.input));
         fixture.put("output", describe(p.output));
         restartFixtures.add(fixture);
+        restartMetadata.add(NativeMetadataReadback.capture(p.input.data, p.input.energy.getChargeLong(p.input.location), SENTINEL));
+        restartMetadata.add(NativeMetadataReadback.capture(p.output.data, p.output.energy.getChargeLong(p.output.location), SENTINEL));
     }
 
     private static Map<String, Object> describe(Machine m) {
@@ -557,6 +630,7 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
         value.put("charge", m.energy.getChargeLong(m.location));
         value.put("link", m.data.getData(LINK));
         value.put("sentinel", m.data.getData(SENTINEL));
+        value.put("metadata", new LinkedHashMap<>(m.data.getAllData()));
         return value;
     }
 
@@ -594,8 +668,13 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
                 if (data == null) return false;
                 if (!data.isDataLoaded()) blocks.loadBlockData(data);
                 return data.getBlockMenu() != null;
-            }, 240).thenCompose(done -> owner(() -> {
+            }, 240).thenCompose(done -> ownerCompose(() -> {
+                @SuppressWarnings("unchecked") Map<String, String> values = (Map<String, String>) fixture.get("metadata");
+                NativeMetadataReadback.Expected expected = new NativeMetadataReadback.Expected(
+                        LocationUtils.getLocKey(location), (String) fixture.get("id"), values);
+                return requireStoredMetadata("restart", List.of(expected), 0).thenCompose(verified -> owner(() -> {
                 SlimefunBlockData data = blocks.getBlockData(location);
+                check.that(true, "actual stored metadata rows, including explicit zero charge, survive restart exactly");
                 check.items(decodeItems(fixture.get("contents")), contents(data.getBlockMenu()), "exact item slots and metadata survive separate process");
                 check.that(fixture.get("id").equals(data.getSfId()), "saved machine identity survives restart");
                 EnergyNetComponent energy = (EnergyNetComponent) SlimefunItem.getById(data.getSfId());
@@ -603,6 +682,7 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
                 check.that(java.util.Objects.equals(fixture.get("link"), data.getData(LINK)), "stored link representation survives restart");
                 check.that(java.util.Objects.equals(fixture.get("sentinel"), data.getData(SENTINEL)), "unrelated existing block data survives restart");
                 return (Void) null;
+                }));
             }));
         });
     }
@@ -615,6 +695,12 @@ public final class WirelessItemTransferProbe extends JavaPlugin {
         report.put("addon", Bukkit.getPluginManager().getPlugin("DynaTech").getPluginMeta().getVersion());
         report.put("pending_delayed_data_writes", blocks.getPendingDelayedWriteTaskCount());
         report.put("pending_database_writes", blocks.getPendingWriteTaskCount());
+        report.put("metadata_readbacks", metadataEvidence);
+        report.put("github_background_quiescence", Map.of("observed", backgroundQuiet,
+                "maximum_matching_workers", observedGithubWorkers, "initial_eligibility_ticks", 620,
+                "quiet_window_ticks", 40, "observed_quiet_ticks", observedQuietTicks,
+                "enabled_at_tick", enabledAtTick, "finished_at_tick", Bukkit.getCurrentTick(),
+                "observed_task_ids", List.copyOf(observedGithubTaskIds)));
         report.put("registered_synchronized_tickers", Map.of(
                 INPUT_ID, SlimefunItem.getById(INPUT_ID).getBlockTicker().isSynchronized(),
                 OUTPUT_ID, SlimefunItem.getById(OUTPUT_ID).getBlockTicker().isSynchronized()));
@@ -835,6 +921,116 @@ final class VirtualTransferFixture implements AutoCloseable {
             recognitions = 0;
             insertAdmissionCalls = 0;
             insertMaxStackCalls = 0;
+        }
+    }
+}
+
+final class NativeMetadataReadback {
+    // This expectation owns a copy. Do not retain the live getAllData() map.
+    record Expected(String locationKey, String slimefunId, Map<String, String> values) {
+        Expected {
+            Objects.requireNonNull(locationKey);
+            Objects.requireNonNull(slimefunId);
+            values = Map.copyOf(values);
+        }
+    }
+
+    record Observation(Expected expected, int recordCount, String actualId,
+                       Map<String, String> actualValues, List<String> mismatches) {
+        Observation {
+            actualValues = Map.copyOf(actualValues);
+            mismatches = List.copyOf(mismatches);
+        }
+
+        boolean passed() { return mismatches.isEmpty(); }
+
+        Map<String, Object> evidence() {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("location", expected.locationKey());
+            row.put("expected_id", expected.slimefunId());
+            row.put("actual_record_count", recordCount);
+            row.put("actual_id", actualId);
+            row.put("expected_values", expected.values());
+            row.put("actual_values", actualValues);
+            row.put("mismatches", mismatches);
+            row.put("passed", passed());
+            return row;
+        }
+    }
+
+    private final BlockDataController controller;
+    private final Method getData;
+
+    NativeMetadataReadback(BlockDataController controller) {
+        this.controller = Objects.requireNonNull(controller);
+        try {
+            getData = ADataController.class.getDeclaredMethod("getData", RecordKey.class);
+            getData.setAccessible(true);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Native database readback API is unavailable", failure);
+        }
+    }
+
+    // Called only on the owner thread, after the fixture's ordinary metadata setup.
+    // An explicit zero-charge KV row must exist in the expectation: default zero
+    // returned by getChargeLong is insufficient to prove that any row was stored.
+    static Expected capture(SlimefunBlockData data, long charge, String sentinelKey) {
+        Map<String, String> values = new LinkedHashMap<>(data.getAllData());
+        if (!Long.toString(charge).equals(values.get("energy-charge"))
+                || !values.containsKey(sentinelKey)) {
+            throw new IllegalStateException("Native metadata expectation was not initialized: " + data.getKey());
+        }
+        return new Expected(data.getKey(), data.getSfId(), values);
+    }
+
+    // Goes directly to the adapter SELECT path. It does not consult or initialize
+    // block/menu caches, submit writes, force inventories, or change controller state.
+    // These separate SELECTs are a point-in-time readback, not a transaction barrier.
+    Observation read(Expected expected) {
+        RecordKey recordKey = new RecordKey(DataScope.BLOCK_RECORD);
+        recordKey.addCondition(FieldKey.LOCATION, expected.locationKey());
+        recordKey.addField(FieldKey.SLIMEFUN_ID);
+        List<RecordSet> records = query(recordKey);
+        String actualId = records.size() == 1 ? records.get(0).getString(FieldKey.SLIMEFUN_ID) : null;
+
+        RecordKey dataKey = new RecordKey(DataScope.BLOCK_DATA);
+        dataKey.addCondition(FieldKey.LOCATION, expected.locationKey());
+        dataKey.addField(FieldKey.DATA_KEY);
+        dataKey.addField(FieldKey.DATA_VALUE);
+        Map<String, String> actual = new LinkedHashMap<>();
+        for (RecordSet row : query(dataKey)) {
+            String key = Objects.requireNonNull(row.getString(FieldKey.DATA_KEY), "Missing stored metadata key");
+            String encoded = Objects.requireNonNull(row.getString(FieldKey.DATA_VALUE), "Missing stored metadata value");
+            if (actual.put(key, DataUtils.blockDataDebase64(encoded)) != null) {
+                throw new IllegalStateException("Duplicate stored metadata key: " + expected.locationKey() + "/" + key);
+            }
+        }
+
+        List<String> mismatches = new ArrayList<>();
+        if (records.size() != 1 || !expected.slimefunId().equals(actualId)) {
+            mismatches.add("Stored machine identity does not match the seeded fixture");
+        }
+        for (var entry : expected.values().entrySet()) {
+            if (!actual.containsKey(entry.getKey())) mismatches.add("Missing stored key: " + entry.getKey());
+            else if (!entry.getValue().equals(actual.get(entry.getKey()))) mismatches.add("Stored value differs: " + entry.getKey());
+        }
+        for (String key : actual.keySet()) {
+            if (!expected.values().containsKey(key)) mismatches.add("Unexpected stored key: " + key);
+        }
+        return new Observation(expected, records.size(), actualId, actual, mismatches);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<RecordSet> query(RecordKey key) {
+        try {
+            return (List<RecordSet>) getData.invoke(controller, key);
+        } catch (InvocationTargetException failure) {
+            Throwable cause = failure.getCause();
+            if (cause instanceof Error error) throw error;
+            if (cause instanceof RuntimeException runtime) throw runtime;
+            throw new IllegalStateException("Native database SELECT failed", cause);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Cannot invoke native database SELECT", failure);
         }
     }
 }
