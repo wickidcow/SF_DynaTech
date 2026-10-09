@@ -13,6 +13,7 @@ import io.github.thebusybiscuit.slimefun4.libraries.dough.items.CustomItemStack;
 import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
 import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.SlimefunBlockData;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
 import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
@@ -81,7 +82,7 @@ public class WirelessItemInput extends SlimefunItem implements EnergyNetComponen
 
             @Override
             public boolean isSynchronized() {
-                return false;
+                return true;
             }
 
             @Override
@@ -113,8 +114,10 @@ public class WirelessItemInput extends SlimefunItem implements EnergyNetComponen
     }
 
     protected void tick(Block b) {
-        BlockMenu menu = SlimefunStorage.getMenu(b);
-        updateKnowledgePane(menu, getChargeLong(b.getLocation()));
+        SlimefunBlockData data = WirelessItemTransferGuard.getLiveData(b.getLocation(), getId());
+        if (data != null) {
+            updateKnowledgePane(data.getBlockMenu(), getChargeLong(b.getLocation()));
+        }
     }
 
     private void updateKnowledgePane(BlockMenu menu, long currentCharge) {

@@ -54,6 +54,14 @@ DynaTech can expose additional content when compatible addons such as Infinity E
 
 This fork keeps DynaTech's original content recognizable while maintaining compatibility with the modern Slimefun Legacy stack. Existing item IDs, recipes, machines, and integrations should be preserved wherever practical during compatibility work.
 
+### 1.1.04 — Wireless item transfer safety
+
+Wireless Item Input and Wireless Item Output now handle inventories on the server thread and revalidate both current machine menus before transferring items. Locked, replaced, removed, or incompletely loaded machines cannot participate in a transfer.
+
+Transfers use a copy of the source stack, retain any items the destination does not accept, and mark both changed menus for saving. Energy is charged only when items move. Existing item IDs, linked locations, item metadata, slot order, whole-stack admission, and the normal cost of eight energy at each endpoint remain unchanged.
+
+The release JAR retains the Paper 1.21.11 / Java 21 floor. CI verifies compilation against Paper 1.21.11, 26.2, and 26.3 APIs, then exercises the same floor-built JAR on three pinned Paper runtimes with transfer and separate-process restart checks. DynaTech currently has no unit test suite; these checks combine the existing Doctor migration contract with native server regression tests. See [`scripts/runtime/README.md`](scripts/runtime/README.md) for the pinned inputs, cases, and evidence format.
+
 Back up established worlds and plugin data before replacing any production build.
 
 ## ❤️ Credits & project lineage

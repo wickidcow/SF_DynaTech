@@ -19,6 +19,7 @@ import io.github.thebusybiscuit.slimefun4.libraries.dough.protection.Interaction
 import io.github.thebusybiscuit.slimefun4.libraries.paperlib.PaperLib;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
 import com.xzavier0722.mc.plugin.slimefun4.storage.controller.ASlimefunDataContainer;
+import com.xzavier0722.mc.plugin.slimefun4.storage.controller.SlimefunBlockData;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
 import me.profelements.dynatech.utils.SlimefunStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
@@ -35,6 +36,7 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -96,7 +98,7 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
 
             @Override
             public boolean isSynchronized() {
-                return false;
+                return true;
             }
 
             @Override
@@ -175,7 +177,12 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
     }
 
     protected void tick(Block b) {
-        String wirelessLocation = SlimefunStorage.getData(b.getLocation(), "wireless-input-location");
+        SlimefunBlockData data = WirelessItemTransferGuard.getLiveData(b.getLocation(), getId());
+        if (data == null) {
+            return;
+        }
+
+        String wirelessLocation = data.getData("wireless-input-location");
         if (wirelessLocation != null) {
             sendItemsFromInput(b, wirelessLocation);
 
@@ -184,6 +191,9 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
 
     private void sendItemsFromInput(Block b, String wirelessLocation) {
         Location wirelessItemInput = stringToLocation(wirelessLocation);
+        if (wirelessItemInput == null) {
+            return;
+        }
 
         // Note: You should probably also see if the Future from getChunkAtAsync is
         // finished here.
@@ -197,28 +207,55 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
             }
         }
 
-        if (SlimefunStorage.getData(wirelessItemInput, "id") != null
-                && SlimefunStorage.getData(wirelessItemInput, "id").equals(Items.WIRELESS_ITEM_INPUT.stack().getItemId())) {
-            BlockMenu input = SlimefunStorage.getMenu(wirelessItemInput);
-            BlockMenu output = SlimefunStorage.getMenu(b);
-            updateKnowledgePane(output, getChargeLong(b.getLocation()));
+        String inputId = Items.WIRELESS_ITEM_INPUT.stack().getItemId();
+        SlimefunBlockData inputData = WirelessItemTransferGuard.getLiveData(wirelessItemInput, inputId);
+        SlimefunBlockData outputData = WirelessItemTransferGuard.getLiveData(b.getLocation(), getId());
+        if (inputData == null || outputData == null
+                || !wirelessLocation.equals(outputData.getData("wireless-input-location"))) {
+            return;
+        }
 
-            for (int i : getOutputSlots()) {
-                if (getChargeLong(wirelessItemInput) < getEnergyConsumption()
-                        || getChargeLong(b.getLocation()) < getEnergyConsumption()) {
-                    return;
-                }
-                ItemStack itemStack = input.getItemInSlot(i);
+        BlockMenu input = inputData.getBlockMenu();
+        BlockMenu output = outputData.getBlockMenu();
+        updateKnowledgePane(output, getChargeLong(b.getLocation()));
+        int[] outputSlots = getOutputSlots();
 
-                if (itemStack != null && itemStack.getType() != Material.AIR
-                        && InvUtils.fitAll(output.toInventory(), new ItemStack[] { itemStack }, getOutputSlots())) {
-                    removeCharge(wirelessItemInput, (long) getEnergyConsumption());
-                    removeCharge(b.getLocation(), (long) getEnergyConsumption());
-                    output.pushItem(itemStack, getOutputSlots());
-                    itemStack.setAmount(0);
-                }
+        for (int i : outputSlots) {
+            if (getChargeLong(wirelessItemInput) < getEnergyConsumption()
+                    || getChargeLong(b.getLocation()) < getEnergyConsumption()) {
+                return;
             }
 
+            ItemStack itemStack = input.getItemInSlot(i);
+            if (itemStack == null || itemStack.getType().isAir() || itemStack.getAmount() <= 0) {
+                continue;
+            }
+
+            ItemStack transfer = itemStack.clone();
+            // Keep the historical whole-stack admission and source-slot order.
+            if (!InvUtils.fitAll(output.toInventory(), new ItemStack[] { transfer }, outputSlots)) {
+                continue;
+            }
+
+            if (!WirelessItemTransferGuard.isCurrent(inputData, input, inputId)
+                    || !WirelessItemTransferGuard.isCurrent(outputData, output, getId())
+                    || !wirelessLocation.equals(outputData.getData("wireless-input-location"))
+                    || !transfer.equals(input.getItemInSlot(i))
+                    || getChargeLong(wirelessItemInput) < getEnergyConsumption()
+                    || getChargeLong(b.getLocation()) < getEnergyConsumption()) {
+                return;
+            }
+
+            int amount = transfer.getAmount();
+            ItemStack remainder = output.pushItem(transfer, outputSlots);
+            int inserted = amount - (remainder == null ? 0 : remainder.getAmount());
+            if (inserted > 0) {
+                input.replaceExistingItem(i, remainder);
+                // pushItem also merges into existing stacks without marking the menu dirty.
+                output.markDirty();
+                removeCharge(wirelessItemInput, (long) getEnergyConsumption());
+                removeCharge(b.getLocation(), (long) getEnergyConsumption());
+            }
         }
 
     }
@@ -301,9 +338,27 @@ public class WirelessItemOutput extends SlimefunItem implements EnergyNetCompone
     }
 
     private static final Location stringToLocation(String locString) {
-        String[] locComponents = locString.split(";");
-        return new Location(Bukkit.getWorld(locComponents[0]), Double.parseDouble(locComponents[1]),
-                Double.parseDouble(locComponents[2]), Double.parseDouble(locComponents[3]));
+        String[] locComponents = locString.split(";", -1);
+        if (locComponents.length != 4) {
+            return null;
+        }
+
+        World world = Bukkit.getWorld(locComponents[0]);
+        if (world == null) {
+            return null;
+        }
+
+        try {
+            double x = Double.parseDouble(locComponents[1]);
+            double y = Double.parseDouble(locComponents[2]);
+            double z = Double.parseDouble(locComponents[3]);
+            if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) {
+                return null;
+            }
+            return new Location(world, x, y, z);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
 }
