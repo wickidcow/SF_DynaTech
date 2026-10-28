@@ -36,6 +36,8 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: maven
+      - name: Install checksum-verified Apache Maven 3.10.0
+        run: bash scripts/install_maven_3_10.sh
 
       - name: Publish Slimefun Legacy API locally
         working-directory: .deps/Slimefun-Legacy
