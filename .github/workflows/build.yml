@@ -7,6 +7,15 @@ on:
   pull_request:
     branches: ['**']
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish a distinct NEW immutable release only after required gates'
+        type: boolean
+        default: false
+      release_version:
+        description: 'Type the exact new version already present in the checked source'
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -22,6 +31,8 @@ jobs:
     steps:
       - name: Check out DynaTech
         uses: actions/checkout@v6
+      - name: Verify manual-only immutable publishing policy
+        run: python3 -m unittest scripts.test_immutable_release_policy -v
 
       - name: Check out Slimefun Legacy
         uses: actions/checkout@v6
@@ -162,18 +173,31 @@ jobs:
           archive: false
           if-no-files-found: error
 
-      - name: Publish raw JAR release asset
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || github.ref_name == github.event.repository.default_branch
+      - name: Publish explicitly confirmed NEW immutable release
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_release == true
         env:
           GH_TOKEN: ${{ github.token }}
+          CONFIRMED_VERSION: ${{ inputs.release_version }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v${LEGACY_VERSION}"; fi
+          test "$CONFIRMED_VERSION" = "$LEGACY_VERSION" || { echo 'Refusing unmatched release version' >&2; exit 1; }
+          TAG="v${LEGACY_VERSION}"
           JAR="dist/${OUTPUT_NAME}"
+          test -s "$JAR"
           NOTES="DynaTech 1.1.04 revalidates current Wireless Item Input/Output menus and linked locations before server-thread transfers. Transfers retain unaccepted source items, mark both changed menus for saving, and charge energy only when items move. Existing item IDs, metadata, linked-location format, slot order, whole-stack admission and normal eight-energy endpoint costs are preserved. The same release JAR is checked on three pinned Paper runtimes with transfer and restart tests. Minecraft 1.21.11 and Java 21 remain the runtime floor."
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$JAR" --clobber
-          else
-            gh release create "$TAG" "$JAR" --target "$GITHUB_SHA" --title "SF_DynaTech $TAG" --notes "$NOTES"
-          fi
+          refuse_existing() {
+            local endpoint="$1"
+            if gh api "$endpoint" > "$RUNNER_TEMP/release-probe.json" 2> "$RUNNER_TEMP/release-probe.err"; then
+              echo "Refusing existing release or tag: $endpoint" >&2
+              exit 1
+            fi
+            if ! grep -Fq 'HTTP 404' "$RUNNER_TEMP/release-probe.err"; then
+              cat "$RUNNER_TEMP/release-probe.err" >&2
+              echo 'No authoritative 404; refuse release under uncertain API response' >&2
+              exit 1
+            fi
+          }
+          refuse_existing "repos/${{ github.repository }}/git/ref/tags/${TAG}"
+          refuse_existing "repos/${{ github.repository }}/releases/tags/${TAG}"
+          gh release create "$TAG" "$JAR" --target "$GITHUB_SHA" --title "SF_DynaTech $TAG" --notes "$NOTES"
