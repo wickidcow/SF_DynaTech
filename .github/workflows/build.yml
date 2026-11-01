@@ -35,6 +35,8 @@ jobs:
         run: python3 -m unittest scripts.test_immutable_release_policy -v
       - name: Verify Paper 26.3 stable compile contract
         run: python3 -m unittest scripts.test_stable_paper_26_3_ci -v
+      - name: Verify stable native Paper fixture and historical beta separation
+        run: python3 -m unittest discover -s scripts/runtime -p 'test_stable_native_paper_pin.py' -v
 
       - name: Check out Slimefun Legacy
         uses: actions/checkout@v6
