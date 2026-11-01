@@ -20,7 +20,13 @@ python3 scripts/runtime/prepare_wireless_probe_inputs.py --out /tmp/dynatech-inp
 The preparer checks each official Paper metadata response against
 `wireless_probe_inputs.json`, then verifies size, SHA-256 and archive CRC. Its
 `inputs.json` contains `core.path` and `paper[version].path`. The pinned lanes are
-Paper 1.21.11 build 132 (STABLE), 26.2 build 132 (STABLE), and 26.3 build 159 (BETA).
+Paper 1.21.11 build 132 (STABLE), 26.2 build 132 (STABLE), and **26.3 build 235 (STABLE)**.
+The 26.3 server pin is the exact official metadata identity: 55,261,122 bytes, SHA-256
+`4ebaf5c9da98c654bb8f17245799943dfb05a285830be4307bfdf7bc9ca024bf`.
+The former 26.3 BETA 159 record is retained **read-only** in
+`paper_26_3_beta_159_historical.json` and is not selected by the native runner.
+The preparer fails closed if a pin changes to BETA or its content-addressed
+server URL no longer matches the expected build/size/SHA-256 identity.
 The core is the unchanged published Slimefun Legacy 4.1.71 artifact from commit
 `f68544e47d8489704d0e9d34adc65f0114b07153`. No latest-build or channel fallback is
 permitted. The runner independently checks the supplied core and Paper hashes
