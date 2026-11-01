@@ -155,6 +155,17 @@ def validate_pins(pins: dict) -> None:
         )
         if pin["project"] != "paper" or pin["version"] != version or pin["metadata_url"] != expected_metadata:
             raise ValueError("Pinned Paper identity does not match its official metadata URL")
+        if type(pin.get("build")) is not int or pin["build"] <= 0:
+            raise ValueError("Native Paper build must be an exact positive integer")
+        if pin.get("channel") != "STABLE":
+            raise ValueError(f"Native Paper {version} requires the official STABLE channel")
+        if pin["name"] != f"paper-{version}-{pin['build']}.jar":
+            raise ValueError("Pinned Paper filename does not match its exact build")
+        expected_download = (
+            f"https://fill-data.papermc.io/v1/objects/{pin['sha256']}/{pin['name']}"
+        )
+        if pin.get("url") != expected_download:
+            raise ValueError("Pinned Paper download URL must match its exact SHA-256 and filename")
 
 
 def main() -> int:
